@@ -11,10 +11,10 @@ PUBLISH_RESULTS = False           # True = publish results.json to GitHub after 
 # Which sleeves are on, and the share of the account value each one may use at most.
 SLEEVE_ENABLED = {
     "trend": True,       # holds broad ETFs only while they are above their 200-day average
-    "sector": True,      # holds the 3 strongest sector ETFs each month
+    "sector": False,      # holds the 3 strongest sector ETFs each month
     "momentum": True,    # holds the strongest large stocks each month
     "meanrev": True,     # buys sharp 1-3 day drops in strong stocks, sells the bounce
-    "pairs": True,       # long one stock, short its twin, when the gap between them is unusually wide
+    "pairs": False,       # long one stock, short its twin, when the gap between them is unusually wide
 }
 SLEEVE_ALLOCATION = {                 # the NORMAL share; automatic shifting moves it between half and 1.5 times this
     "trend": 0.18,
