@@ -1,6 +1,7 @@
 """
 check_files.py
 Checks that every file you pasted into GitHub matches the tested version exactly.
+(brain_config.py and sleeve_config.py show DIFFERENT after you change a setting in them. That is expected.)
 
   python tracker/check_files.py
 """
@@ -16,16 +17,20 @@ EXPECTED = {
     "auto_run.py": "d95151b9ce490a8d",
     "start_gateway.py": "38b7bdd4578a58b9",
     "ibc_setup.py": "076ac6f2b0c9f45e",
-    "sleeve_config.py": "d6989ae0dc02422a",
+    "sleeve_config.py": "2f72c4492f94be7d",
     "sleeve_strategies.py": "9c4448dcdc2b641f",
     "risk.py": "09d4d81ed0dd3154",
     "broker_extra.py": "8a988778ae707468",
     "allocator.py": "8db85614a251c913",
-    "sleeve_engine.py": "977b9c5cfbefc0b5",
+    "sleeve_engine.py": "1a1ff5f910166209",
     "backtest.py": "177b9d6ed00aeab2",
     "run_sleeves.py": "1aa6124cf88dbc47",
     "publish_results.py": "695db6ee2f57a8c6",
     "engine.py": "db8886c4a8718ca5",
+    "brain_config.py": "7f2910cb20735e74",
+    "market_brain.py": "cc658e55515bc8c7",
+    "brain_test.py": "5069975f2f96a0e9",
+    "run_brain.py": "d43fb90696926fd5",
 }
 
 
