@@ -8,7 +8,10 @@ Test it any time, with no orders placed:   python tracker/auto_run.py --plan-onl
 """
 
 import os
+import subprocess
 import sys
+import threading
+import time
 import traceback
 from collections import Counter
 from datetime import datetime
@@ -37,6 +40,8 @@ except ImportError:
 WINDOW_START = 9 * 60 + 35     # 9:35 AM Eastern
 WINDOW_END = 15 * 60 + 45      # 3:45 PM Eastern
 LAST_TRY = 10 * 60 + 55        # the last scheduled try; only then do we email "could not run"
+STUCK_MINUTES = 70             # a normal run takes 5-25 minutes; after this long it is stopped so a backup try can run
+WATCH_EVERY_SECONDS = 30
 
 
 def log(text):
@@ -45,6 +50,43 @@ def log(text):
     print(line)
     with open(engine.data_path("auto_run.log"), "a") as f:
         f.write(line + "\n")
+
+
+def stay_awake():
+    """Keeps the Mac from going to sleep until this run ends (the Mac's built-in 'caffeinate' tool).
+    It works while the Mac is plugged in with the lid open. A closed lid on battery still sleeps."""
+    try:
+        subprocess.Popen(["/usr/bin/caffeinate", "-ims", "-w", str(os.getpid())],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
+def start_watchdog(minutes=None):
+    """If this run is still going after `minutes` of real clock time (time asleep counts), send an urgent phone
+    alert and stop it WITHOUT marking the day as done, so the next scheduled try (10:15 or 10:55) runs it again."""
+    minutes = STUCK_MINUTES if minutes is None else minutes
+    started = time.time()
+
+    def watch():
+        while True:
+            time.sleep(WATCH_EVERY_SECONDS)
+            if time.time() - started > minutes * 60:
+                try:
+                    log(f"STUCK: still running after {minutes} minutes, so it was stopped.")
+                    phone_alert.send(
+                        "Tracker was STUCK",
+                        f"Today's run was still going after {minutes} minutes, so it was stopped. The next "
+                        "scheduled try (10:15 or 10:55) runs it again. If both have passed, run it by hand: "
+                        "python tracker/auto_run.py",
+                        "urgent",
+                    )
+                finally:
+                    os._exit(3)
+
+    thread = threading.Thread(target=watch, daemon=True)
+    thread.start()
+    return thread
 
 
 def summarize(report, mode):
@@ -166,6 +208,8 @@ def main():
         if os.path.exists(marker):
             log("Already ran today, nothing to do.")
             return
+        stay_awake()
+        start_watchdog()
 
     broker = IBBroker()
     try:
