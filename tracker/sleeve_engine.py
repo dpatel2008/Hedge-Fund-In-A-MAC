@@ -24,6 +24,15 @@ import sleeve_strategies as S
 
 ET = ZoneInfo("America/New_York")
 
+try:
+    import market_days
+except ImportError:                      # older copies without the holiday list: weekdays only
+    market_days = None
+
+
+class RetryLater(Exception):
+    """IBKR's data was not ready, so nothing was traded. The next scheduled try can safely run again."""
+
 
 def _clock():
     return time.time()
@@ -45,8 +54,23 @@ def market_is_open(now=None):
     now = now or datetime.now(ET)
     if now.weekday() >= 5:
         return False
+    close = 16 * 60
+    if market_days is not None:
+        if not market_days.is_trading_day(now.date()):
+            return False
+        close = market_days.close_minutes(now.date())
     minutes = now.hour * 60 + now.minute
-    return 9 * 60 + 30 <= minutes < 16 * 60
+    return 9 * 60 + 30 <= minutes < close
+
+
+def last_trading_day(today_iso):
+    """The newest trading day that has finished before today (skips weekends and market holidays)."""
+    if market_days is not None:
+        return market_days.previous_trading_day(today_iso).isoformat()
+    d = date.fromisoformat(today_iso) - timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d.isoformat()
 
 
 def _f(x, default=None):
@@ -55,6 +79,13 @@ def _f(x, default=None):
         return v if math.isfinite(v) else default
     except (TypeError, ValueError):
         return default
+
+
+def _write_text(path, text):
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(text)
+    os.replace(tmp, path)
 
 
 def append_csv(path, fields, row):
@@ -77,6 +108,8 @@ class Ledger:
         self.realized = {}
         self.last_rebalance = {}
         self.stopped = {}
+        self.fills = {}           # {"date": day, "shares": {"sleeve|symbol": signed shares filled that day}}
+        self.pending = {}         # orders sent but not yet written down: {key: {"sleeve", "symbol", "shares", ...}}
         self.load()
 
     def load(self):
@@ -96,6 +129,8 @@ class Ledger:
         self.realized = raw.get("realized", {})
         self.last_rebalance = raw.get("last_rebalance", {})
         self.stopped = raw.get("stopped", {})
+        self.fills = raw.get("fills", {}) or {}
+        self.pending = raw.get("pending", {}) or {}
 
     def save(self):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
@@ -103,9 +138,18 @@ class Ledger:
         with open(tmp, "w") as f:
             json.dump({
                 "positions": self.positions, "realized": self.realized,
-                "last_rebalance": self.last_rebalance, "stopped": self.stopped,
+                "last_rebalance": self.last_rebalance, "stopped": self.stopped, "fills": self.fills,
+                "pending": self.pending,
             }, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, self.path)
+
+    def filled_today(self, today_iso):
+        """{"sleeve|symbol": signed shares} this ledger has recorded as filled today."""
+        if self.fills.get("date") != today_iso:
+            return {}
+        return dict(self.fills.get("shares") or {})
 
     def qty(self, sleeve, symbol):
         return self.positions.get(sleeve, {}).get(symbol, {}).get("qty", 0)
@@ -137,6 +181,10 @@ class Ledger:
             book[symbol] = {"qty": new_q, "avg_cost": cost, "entry_date": entry}
         if realized:
             self.realized[sleeve] = self.realized.get(sleeve, 0.0) + realized
+        if self.fills.get("date") != today_iso:
+            self.fills = {"date": today_iso, "shares": {}}
+        key = f"{sleeve}|{symbol}"
+        self.fills["shares"][key] = self.fills["shares"].get(key, 0) + signed_qty
         append_csv(data_path("sleeve_trades.csv"), TRADE_FIELDS, {
             "date": today_iso, "sleeve": sleeve, "symbol": symbol,
             "action": "BUY" if signed_qty > 0 else "SELL", "qty": abs(signed_qty),
@@ -168,7 +216,8 @@ class PriceStore:
         self.clock = clock or (lambda: _clock())
         self.deadline = self.clock() + fetch_seconds if fetch_seconds is not None else None
         self.price_dir = price_dir or data_path("prices")
-        self.request_times = []
+        shared = getattr(adapter, "history_log", None)        # the tracker's history requests count too
+        self.request_times = shared if isinstance(shared, list) else []
         self.cache = {}
         self.fetched = 0
         self.no_data = []
@@ -200,10 +249,7 @@ class PriceStore:
                 w.writerow([d, c])
 
     def expected_last(self):
-        d = date.fromisoformat(self.today) - timedelta(days=1)
-        while d.weekday() >= 5:
-            d -= timedelta(days=1)
-        return d.isoformat()
+        return last_trading_day(self.today)
 
     def _out_of_time(self):
         return self.deadline is not None and self.clock() > self.deadline
@@ -212,7 +258,7 @@ class PriceStore:
         """Keeps history requests under IBKR's limit. Returns False if we ran out of time waiting."""
         while True:
             now = self.clock()
-            self.request_times = [t for t in self.request_times if now - t < 600]
+            self.request_times[:] = [t for t in self.request_times if now - t < 600]
             if len(self.request_times) < SC.HISTORY_REQUESTS_PER_10_MIN:
                 self.request_times.append(now)
                 return True
@@ -575,6 +621,120 @@ def make_orders(plan, ledger, quotes_fn, flags):
     return live + others
 
 
+def reconcile_from_fills(adapter, ledger, positions, today_iso, events):
+    """Repairs the ledger after a run that stopped part way (lost connection, or stopped as stuck): IBKR's own
+    record of today's fills can show shares that were bought or sold for a sleeve but never written down.
+    A fix is only made when IBKR shows MORE filled than the ledger AND the fix brings the ledger closer to what
+    the account really holds, so it can never make things worse. Returns how many symbols were fixed."""
+    fills_fn = getattr(adapter, "todays_fills", None)
+    if fills_fn is None:
+        return 0
+    try:
+        fills = fills_fn() or []
+    except Exception:
+        return 0
+    end = f"-{today_iso}"
+    totals, money, gross, seen = {}, {}, {}, set()
+    for f in fills:
+        ref = str(f.get("ref") or "")
+        if not ref.startswith("SLEEVE-") or not ref.endswith(end) or f.get("sec_type", "STK") != "STK":
+            continue
+        if f.get("exec_id") and f["exec_id"] in seen:
+            continue
+        seen.add(f.get("exec_id"))
+        sleeve, _, symbol = ref[len("SLEEVE-"):-len(end)].partition("-")
+        shares = _f(f.get("shares"), 0.0)
+        if not sleeve or not symbol or not shares:
+            continue
+        key = f"{sleeve}|{symbol}"
+        totals[key] = totals.get(key, 0.0) + shares
+        money[key] = money.get(key, 0.0) + abs(shares) * (_f(f.get("price"), 0.0) or 0.0)
+        gross[key] = gross.get(key, 0.0) + abs(shares)
+    if not totals:
+        return 0
+    recorded = ledger.filled_today(today_iso)
+    held = {p["symbol"]: p.get("qty", 0) for p in positions}
+    fixed = 0
+    for key, total in sorted(totals.items()):
+        have = recorded.get(key, 0)
+        if abs(total) <= abs(have) or total * have < 0:
+            continue                                     # IBKR shows no more than the ledger already has
+        diff = int(round(total - have))
+        if diff == 0:
+            continue
+        sleeve, symbol = key.split("|", 1)
+        broker_qty = held.get(symbol, 0)
+        before = abs(broker_qty - ledger.total_qty(symbol))
+        after = abs(broker_qty - (ledger.total_qty(symbol) + diff))
+        if after >= before:
+            continue                                     # the account does not back this up: leave it alone
+        price = money[key] / gross[key] if money.get(key) and gross.get(key) else None
+        if not price:
+            continue
+        ledger.apply_fill(sleeve, symbol, diff, price, today_iso, "fill found in IBKR's records")
+        events.append(f"{sleeve}: {abs(diff)} {symbol} {'bought' if diff > 0 else 'sold'} by an earlier try today "
+                      "was missing from the sleeve records and has been added")
+        fixed += 1
+    if fixed:
+        ledger.save()
+    return fixed
+
+
+def settle_pending(ledger, positions, today_iso, events):
+    """After a run that stopped part way: a sleeve order that was sent but never written down may have filled.
+    The account's shares tell: any difference between the account and the ledger, in the order's direction and
+    no bigger than the order, is added to that sleeve. Returns how many were added."""
+    if not ledger.pending:
+        return 0
+    held = {p["symbol"]: p for p in positions}
+    added = 0
+    for key, rec in sorted(ledger.pending.items()):
+        symbol, sleeve, shares = rec.get("symbol"), rec.get("sleeve"), int(rec.get("shares") or 0)
+        if not symbol or not sleeve or not shares:
+            continue
+        diff = (held.get(symbol, {}).get("qty") or 0) - ledger.total_qty(symbol)
+        take = int(min(abs(diff), abs(shares)))
+        if take < 1 or diff * shares <= 0:
+            continue                                    # it did not fill
+        take = take if shares > 0 else -take
+        price = (held.get(symbol) or {}).get("avg_cost") or (held.get(symbol) or {}).get("market_price") or rec.get("price")
+        if not price:
+            continue
+        ledger.apply_fill(sleeve, symbol, take, float(price), rec.get("date") or today_iso,
+                          "fill found after an interrupted run")
+        events.append(f"{sleeve}: {abs(take)} {symbol} {'bought' if take > 0 else 'sold'} by an earlier try was "
+                      "missing from the sleeve records and has been added")
+        added += 1
+    ledger.pending = {}
+    ledger.save()
+    return added
+
+
+def connected(adapter):
+    """True while the connection to IB Gateway is up (positions read after it drops are empty and must not be used)."""
+    fn = getattr(adapter, "is_connected", None)
+    try:
+        return True if fn is None else bool(fn())
+    except Exception:
+        return False
+
+
+def positions_loaded(adapter, positions):
+    """False when IBKR reports no positions at all but its account value says positions exist (not loaded yet)."""
+    if positions:
+        return True
+    gross_fn = getattr(adapter, "gross_position_value", None)
+    if gross_fn is None:
+        return True
+    try:
+        everything = adapter.all_positions() if hasattr(adapter, "all_positions") else positions
+        if everything:
+            return True
+        return not gross_fn()
+    except Exception:
+        return True
+
+
 def reconcile_late_fills(adapter, ledger, orders, today_iso, events):
     """A fill can land just after we cancel a slow order. If the broker holds a little more or less than the
     ledger for a symbol we traded this run, and the gap is no bigger than the order, fix the ledger."""
@@ -585,6 +745,8 @@ def reconcile_late_fills(adapter, ledger, orders, today_iso, events):
     if not touched:
         return
     by_symbol = {p["symbol"]: p for p in adapter.positions()}
+    if not connected(adapter):
+        return                                       # positions read after a dropped connection are empty
     for symbol, o in touched.items():
         broker_qty = by_symbol.get(symbol, {}).get("qty", 0)
         diff = broker_qty - ledger.total_qty(symbol)
@@ -611,10 +773,17 @@ def execute_orders(adapter, ledger, orders, today_iso, events):
                 o["status"] = "skipped: the closing leg did not fully fill"
                 continue
         ref = f"SLEEVE-{o['sleeve']}-{o['symbol']}-{today_iso}"
+        print(f"  {o['sleeve']}: {o['action']} {int(o['qty'])} {o['symbol']} (limit {o['limit']:.2f})")
+        key = f"{ref}#{o['id']}"
+        ledger.pending[key] = {"sleeve": o["sleeve"], "symbol": o["symbol"], "date": today_iso,
+                               "shares": int(o["qty"]) if o["action"] == "BUY" else -int(o["qty"]), "price": o["limit"]}
+        ledger.save()                              # written down BEFORE the order, in case the run stops part way
         result = adapter.limit_order(o["symbol"], o["action"], int(o["qty"]), o["limit"], ref)
         filled = int(result.get("filled") or 0)
         filled_by_id[o["id"]] = filled
+        ledger.pending.pop(key, None)
         if filled < 1:
+            ledger.save()
             o["status"] = f"NOT FILLED ({result.get('status')})"
             continue
         fill = result.get("avg_fill_price") or o["price"]
@@ -818,8 +987,10 @@ def symbols_for_today(ledger, today_iso, brain_module=None):
 
 def fetch_window(store, symbols):
     """Seconds the automatic run may spend loading prices: enough for every symbol that needs a new day, at
-    IBKR's pace (about 55 requests per 10 minutes), but never more than 50 minutes."""
+    IBKR's pace (about 55 requests per 10 minutes, counting the tracker's own requests), never more than 50 minutes."""
     need = sum(1 for s in symbols if store.needs_fetch(s))
+    now = store.clock()
+    need += sum(1 for t in store.request_times if now - t < 600)
     rounds = math.ceil(need / max(1, SC.HISTORY_REQUESTS_PER_10_MIN))
     return min(3000, max(SC.AUTO_FETCH_SECONDS, (rounds - 1) * 600 + SC.AUTO_FETCH_SECONDS))
 
@@ -851,6 +1022,13 @@ def run(mode, adapter, force=False, today=None, auto=False):
 
     ledger = Ledger()
     positions = adapter.positions()
+    if mode != "report" and not connected(adapter):
+        raise RetryLater("Lost the connection to IB Gateway, so the sleeves did nothing.")
+    if mode != "report" and not positions_loaded(adapter, positions):
+        raise RetryLater("IBKR had not finished loading the account's positions, so the sleeves did nothing.")
+    if mode == "trade":
+        reconcile_from_fills(adapter, ledger, positions, today_iso, events)
+        settle_pending(ledger, positions, today_iso, events)
     try:
         brain_module = _brain_module()
     except Exception as e:
@@ -946,10 +1124,8 @@ def run(mode, adapter, force=False, today=None, auto=False):
         "brain_lines": brain_lines, "brain_html": brain_html,
     }
     path = data_path("sleeves_dashboard.html")
-    with open(path, "w") as f:
-        f.write(render_dashboard(report))
-    with open(data_path("sleeves_report.json"), "w") as f:
-        json.dump(report, f, indent=2, default=str)
+    _write_text(path, render_dashboard(report))
+    _write_text(data_path("sleeves_report.json"), json.dumps(report, indent=2, default=str))
     print(summary_text(report))
     print(f"\nSleeves dashboard saved to {path}")
     return report, path
