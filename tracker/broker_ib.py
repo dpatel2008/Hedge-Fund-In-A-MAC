@@ -5,12 +5,18 @@ Needs IB Gateway (or Trader Workstation) running and logged in to a PAPER accoun
 """
 
 import math
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from ib_async import ComboLeg, Contract, IB, LimitOrder, MarketOrder, Option, Stock
 
 import config as C
+
+SYNC_SECONDS = 20          # time allowed to load the account's positions, orders and values when connecting
+REQUEST_TIMEOUT = 90       # no single question to IBKR may wait longer than this (stops a run from hanging forever)
+CONNECT_TRIES = 2
+OUR_ORDER_TAGS = ("SECW-", "SLEEVE-")    # every order this project places has an order reference starting with one of these
 
 
 def _num(x):
@@ -32,49 +38,139 @@ def _ib_symbol(symbol):
 
 
 class IBBroker:
-    def __init__(self):
+    def __init__(self, request_timeout=None):
         self.ib = IB()
+        self.ib.RequestTimeout = REQUEST_TIMEOUT if request_timeout is None else request_timeout
         self.account_id = ""
         self._stocks = {}
+        self.history_log = []      # when each price-history request was sent (the sleeves count these too)
+        self.connect_problem = ""
 
     # ------------------------------------------------------------ connection
 
     def connect(self):
-        for port in C.IB_PORTS:
-            try:
-                self.ib.connect(C.IB_HOST, port, clientId=C.IB_CLIENT_ID, timeout=8)
-                break
-            except Exception:
-                continue
+        """Connects and makes sure the account's values and positions have fully loaded.
+        First it asks ib_async to load everything (positions, orders, fills, account values) and to complain if any
+        part is late. If the gateway answers but some part keeps being late, the last try connects anyway and
+        checks the two parts that matter (the account value and the positions) itself.
+        Raises SystemExit if that does not work (IB Gateway closed, not logged in, or not answering)."""
+        problems = []
+        gateway_answered = False
+        for attempt in range(CONNECT_TRIES + 1):
+            strict = attempt < CONNECT_TRIES
+            if not strict and not gateway_answered:
+                break                                  # nothing is listening: a gentler try would not help
+            for port in C.IB_PORTS:
+                try:
+                    self.ib.connect(C.IB_HOST, port, clientId=C.IB_CLIENT_ID, timeout=SYNC_SECONDS,
+                                    raiseSyncErrors=strict)
+                    break
+                except Exception as e:                 # refused, timed out, or part of the account data was late
+                    if not isinstance(e, ConnectionRefusedError):
+                        gateway_answered = True
+                    problems.append(f"port {port}: {type(e).__name__} {e}".strip())
+                    try:
+                        self.ib.disconnect()
+                    except Exception:
+                        pass
+            if self.ib.isConnected():
+                accounts = self.ib.managedAccounts()
+                self.account_id = accounts[0] if accounts else ""
+                if strict:
+                    break
+                if self.account_loaded():
+                    print("Note: IBKR was slow to send part of the account data (" + "; ".join(problems[-2:]) +
+                          "). Connected anyway after checking the account value and positions.")
+                    break
+                problems.append("connected, but the account value or positions did not load")
+                self.disconnect()
+            if attempt + 1 <= CONNECT_TRIES:
+                time.sleep(5)
         if not self.ib.isConnected():
+            self.connect_problem = "; ".join(problems[-4:])
             raise SystemExit(
                 "Could not connect to Interactive Brokers.\n"
                 "Make sure IB Gateway is open, logged in to your PAPER account, and its API "
-                "settings are on (see the setup steps)."
+                "settings are on (see the setup steps).\n"
+                f"Details: {self.connect_problem}"
             )
-        accounts = self.ib.managedAccounts()
-        self.account_id = accounts[0] if accounts else ""
         self.ib.reqMarketDataType(C.IB_MARKET_DATA_TYPE)
         return self.account_id
 
+    def account_loaded(self):
+        """True when the account value is known and, if IBKR says positions exist, they have arrived."""
+        try:
+            values = self.account_values()
+            if not values.get("NetLiquidation"):
+                return False
+            return not values.get("GrossPositionValue") or bool(self.ib.portfolio())
+        except Exception:
+            return False
+
     def disconnect(self):
-        if self.ib.isConnected():
-            self.ib.disconnect()
+        try:
+            if self.ib.isConnected():
+                self.ib.disconnect()
+        except Exception:
+            pass
+
+    def is_connected(self):
+        try:
+            return bool(self.ib.isConnected())
+        except Exception:
+            return False
+
+    def cancel_leftover_orders(self):
+        """Cancels orders this project placed earlier that are still waiting (for example after a run was stopped
+        part way). Returns how many were cancelled. Never raises."""
+        cancelled = 0
+        try:
+            for trade in self.ib.openTrades():
+                ref = getattr(trade.order, "orderRef", "") or ""
+                if ref.startswith(OUR_ORDER_TAGS) and not trade.isDone():
+                    self.ib.cancelOrder(trade.order)
+                    cancelled += 1
+            if cancelled:
+                self.ib.sleep(2)
+        except Exception:
+            pass
+        return cancelled
 
     # ------------------------------------------------------------ account
 
     def account_values(self):
+        """NetLiquidation, GrossPositionValue and a few other numbers, in US dollars.
+        Uses the account values IBKR keeps sending since the connection was made (no extra request). Only if
+        those are missing does it ask for the account summary."""
         wanted = {
             "NetLiquidation", "TotalCashValue", "GrossPositionValue",
             "AvailableFunds", "BuyingPower", "UnrealizedPnL", "RealizedPnL",
         }
-        out = {}
-        for item in self.ib.accountSummary():
-            if item.tag in wanted and item.currency in ("USD", "BASE", ""):
-                try:
-                    out[item.tag] = float(item.value)
-                except ValueError:
-                    pass
+
+        def pick(items):
+            out = {}
+            ranked = sorted(items, key=lambda v: 1 if v.currency == "USD" else 0)    # USD wins over BASE
+            for item in ranked:
+                if item.tag in wanted and item.currency in ("USD", "BASE", ""):
+                    try:
+                        out[item.tag] = float(item.value)
+                    except (TypeError, ValueError):
+                        pass
+            return out
+
+        try:
+            out = pick(self.ib.accountValues(self.account_id) if self.account_id else self.ib.accountValues())
+        except Exception:
+            out = {}
+        if not out.get("NetLiquidation"):
+            try:
+                summary = pick(self.ib.accountSummary(self.account_id) if self.account_id else self.ib.accountSummary())
+                for key, value in summary.items():
+                    out.setdefault(key, value)
+                if summary.get("NetLiquidation"):
+                    out["NetLiquidation"] = summary["NetLiquidation"]
+            except Exception:
+                pass
         return out
 
     def positions(self):
@@ -92,6 +188,24 @@ class IBBroker:
                 "unrealized": _num(item.unrealizedPNL),
                 "realized": _num(item.realizedPNL),
             })
+        return out
+
+    def todays_fills(self):
+        """Every fill IBKR reports for this connection number today: [{"ref", "symbol", "shares" (signed), "price",
+        "exec_id"}]. Used to repair the sleeves' records after a run that stopped part way. Never raises."""
+        out = []
+        try:
+            for fill in self.ib.fills():
+                ex = fill.execution
+                shares = _num(ex.shares) or 0.0
+                out.append({
+                    "ref": ex.orderRef or "", "symbol": fill.contract.symbol.replace(" ", "-"),
+                    "sec_type": fill.contract.secType,
+                    "shares": shares if ex.side == "BOT" else -shares,
+                    "price": _num(ex.price), "exec_id": ex.execId, "time": str(ex.time),
+                })
+        except Exception:
+            return []
         return out
 
     # ------------------------------------------------------------ market data
@@ -135,6 +249,7 @@ class IBBroker:
         contract = self._stock(symbol)
         if contract is None:
             return []
+        self.history_log.append(time.time())
         try:
             bars = self.ib.reqHistoricalData(
                 contract, endDateTime="", durationStr=f"{days} D",
@@ -142,17 +257,20 @@ class IBBroker:
             )
         except Exception:
             return []
-        return [
-            {
-                "date": str(bar.date)[:10],
-                "open": float(bar.open),
-                "high": float(bar.high),
-                "low": float(bar.low),
-                "close": float(bar.close),
-                "volume": float(bar.volume),
-            }
-            for bar in (bars or [])
-        ]
+        out = []
+        for bar in bars or []:
+            try:
+                out.append({
+                    "date": str(bar.date)[:10],
+                    "open": float(bar.open),
+                    "high": float(bar.high),
+                    "low": float(bar.low),
+                    "close": float(bar.close),
+                    "volume": float(bar.volume),
+                })
+            except (TypeError, ValueError):
+                continue
+        return out
 
     def option_chain(self, symbol, price):
         contract = self._stock(symbol)
