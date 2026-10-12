@@ -62,6 +62,27 @@ class IBAdapter:
         """Every position, stocks and options (for the capital table)."""
         return list(self.broker.positions())
 
+    def is_connected(self):
+        fn = getattr(self.broker, "is_connected", None)
+        return True if fn is None else bool(fn())
+
+    def gross_position_value(self):
+        """What IBKR says all positions are worth together (long + short), or None if unknown."""
+        try:
+            return self.broker.account_values().get("GrossPositionValue")
+        except Exception:
+            return None
+
+    @property
+    def history_log(self):
+        """Times of every price-history request this run (shared with the tracker, so IBKR's pace limit counts both)."""
+        return getattr(self.broker, "history_log", None)
+
+    def todays_fills(self):
+        """Today's fills from IBKR's own records (see IBBroker.todays_fills), or [] if not available."""
+        fn = getattr(self.broker, "todays_fills", None)
+        return fn() if fn else []
+
     def sleep(self, seconds):
         self.ib.sleep(seconds)
 
