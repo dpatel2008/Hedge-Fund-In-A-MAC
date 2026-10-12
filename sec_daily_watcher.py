@@ -11,6 +11,7 @@ weekend or holiday), the script steps back to the latest day that exists.
 import csv
 import re
 import sys
+import time
 import requests
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -41,13 +42,27 @@ def index_url(d: date) -> str:
     )
 
 
-def download_index(d: date):
-    """Returns the index text, or None if SEC does not have that day's file."""
-    resp = requests.get(index_url(d), headers=HEADERS, timeout=30)
-    if resp.status_code in (403, 404):
-        return None
-    resp.raise_for_status()
-    return resp.text
+def download_index(d: date, tries: int = 4):
+    """Returns the index text, or None if SEC does not have that day's file.
+    A network hiccup or an SEC "busy" answer is tried again a few times before giving up."""
+    for attempt in range(1, tries + 1):
+        try:
+            resp = requests.get(index_url(d), headers=HEADERS, timeout=30)
+        except requests.RequestException as e:
+            if attempt == tries:
+                raise
+            print(f"  Network problem reaching the SEC ({e}). Trying again in {15 * attempt} seconds...")
+            time.sleep(15 * attempt)
+            continue
+        if resp.status_code in (403, 404):
+            return None
+        if resp.status_code in (429, 500, 502, 503, 504) and attempt < tries:
+            print(f"  The SEC answered {resp.status_code} (busy). Trying again in {15 * attempt} seconds...")
+            time.sleep(15 * attempt)
+            continue
+        resp.raise_for_status()
+        return resp.text
+    return None
 
 
 def find_latest_index():
