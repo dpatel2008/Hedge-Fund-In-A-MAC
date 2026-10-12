@@ -147,6 +147,20 @@ class Ledger:
 
 # ---------------------------------------------------------------- price history (cached on disk)
 
+def split_ratio(old, new, check_days=5):
+    """If the last few days in both the saved and the new prices disagree by the same ratio (a stock split or a
+    price adjustment since the last download), returns that ratio, else None."""
+    shared = sorted(d for d in new if d in old)[-check_days:]
+    pairs = [(new[d], old[d]) for d in shared if old[d] > 0 and new[d] > 0]
+    if len(pairs) < 2:
+        return None
+    ratios = sorted(a / b for a, b in pairs)
+    mid = ratios[len(ratios) // 2]
+    if abs(mid - 1) <= 0.02 or any(abs(r / mid - 1) >= 0.005 for r in ratios):
+        return None
+    return mid
+
+
 class PriceStore:
     def __init__(self, adapter, today_iso, fetch_seconds=None, price_dir=None, clock=None):
         self.adapter = adapter
@@ -159,6 +173,7 @@ class PriceStore:
         self.fetched = 0
         self.no_data = []
         self.skipped_for_time = []
+        self.rescaled = []
 
     def _file(self, symbol):
         return os.path.join(self.price_dir, symbol.replace("/", "_") + ".csv")
@@ -222,9 +237,12 @@ class PriceStore:
                 if self._throttle():
                     bars = self.adapter.daily_bars(symbol, duration)
                     self.fetched += 1
-                    for b in bars:
-                        if b["date"] < self.today:
-                            rows[b["date"]] = b["close"]
+                    new = {b["date"]: b["close"] for b in bars if b["date"] < self.today}
+                    ratio = split_ratio(rows, new) if rows and new else None
+                    if ratio:                            # a split: rescale the saved days so the history stays smooth
+                        rows = {d: c * ratio for d, c in rows.items()}
+                        self.rescaled.append(symbol)
+                    rows.update(new)
                     if bars:
                         self._save(symbol, rows)
                 else:
@@ -236,6 +254,10 @@ class PriceStore:
             return None
         self.cache[symbol] = {"dates": dates, "close": [rows[d] for d in dates]}
         return self.cache[symbol]
+
+    def needs_fetch(self, symbol):
+        rows = self._load(symbol)
+        return not rows or max(rows) < self.expected_last()
 
     def get_many(self, symbols):
         out = {}
@@ -267,8 +289,10 @@ def _trunc_qty(value, price):
     return n if value >= 0 else -n
 
 
-def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, allocations=None):
-    """Works out what every sleeve wants to own. Returns a plan dict. Places nothing."""
+def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, allocations=None, brain=None):
+    """Works out what every sleeve wants to own. Returns a plan dict. Places nothing.
+    brain: the market brain's decision (market_brain.today). Its "scales" replace the old regime rule and its
+    "params" replace a strategy's settings, but only for the parts switched "on"."""
     by_symbol = {p["symbol"]: p for p in positions}
     ledger_symbols = ledger.symbols()
 
@@ -286,6 +310,8 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
     regime = risk.market_regime(spy["close"] if spy else None, SC.REGIME_SMA_DAYS)
     scale = risk.regime_scale(regime)
     loss = risk.daily_loss_status(equity, risk.previous_equity(today_iso))
+    brain_scales = (brain or {}).get("scales")
+    brain_params = (brain or {}).get("params") or {}
 
     def last_price(symbol, data=None):
         p = by_symbol.get(symbol)
@@ -307,9 +333,14 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
         due = freq == "daily" or S.month_changed(ledger.last_rebalance.get(name), today_iso)
         held = dict(ledger.positions.get(name, {}))
         share = (allocations or {}).get(name, SC.SLEEVE_ALLOCATION.get(name, 0.0))
-        capital = equity * share * (scale if name in SC.REGIME_SCALED_SLEEVES else 1.0)
-        sp = {"name": name, "due": due, "capital": capital, "share": share, "notes": [], "info": [], "status": "",
-              "decided": False, "stopped": []}
+        if brain_scales is not None:                     # the market brain's weather dial is on
+            size = brain_scales.get(name, 1.0)
+        else:
+            size = scale if name in SC.REGIME_SCALED_SLEEVES else 1.0
+        capital = equity * share * size
+        params = brain_params.get(name) or None
+        sp = {"name": name, "due": due, "capital": capital, "share": share, "size": size, "params": params,
+              "notes": [], "info": [], "status": "", "decided": False, "stopped": []}
         sleeves[name] = sp
 
         if not due:
@@ -332,7 +363,7 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
             continue
         if name in ledger.stopped and S.FREQ[name] == "monthly":
             ledger.stopped[name] = {}
-        result = S.RUNNERS[name](data, held, today_iso)
+        result = S.RUNNERS[name](data, held, today_iso, params)
         sp["notes"] = result["notes"]
         sp["info"] = result["info"]
         sp["decided"] = True
@@ -633,8 +664,9 @@ def summary_text(report):
     lines = ["STRATEGY SLEEVES" + (" (PLAN ONLY, no orders placed)" if report["mode"] == "plan" else "")]
     reg = report["regime"]
     if reg["state"] != "unknown":
+        used = "" if report.get("sizing") != "weather dial" else " - not used for sizing, the weather dial is on"
         lines.append(f"  Market regime: {reg['state']} (SPY {reg['spy']:.2f} vs {reg['sma_days']}-day average {reg['sma']:.2f}, "
-                     f"20-day volatility {reg['vol20'] * 100:.0f}%)")
+                     f"20-day volatility {reg['vol20'] * 100:.0f}%){used}")
     if report["loss"]["halt"]:
         lines.append(f"  DAILY LOSS LIMIT HIT ({report['loss']['change'] * 100:.1f}%): no new positions today.")
     for row in report["sleeves"]:
@@ -656,6 +688,9 @@ def summary_text(report):
     if report["mismatches"]:
         lines.append("  ! The account does not match the sleeve ledger for: "
                      + ", ".join(m["symbol"] for m in report["mismatches"]) + " (those symbols are left alone).")
+    if report.get("brain_lines"):
+        lines.append("")
+        lines += report["brain_lines"]
     if report.get("capital"):
         lines.append("")
         lines.append(allocator.capital_text(report["capital"]["rows"], report["capital"]["totals"], report["capital"]["state"]))
@@ -743,6 +778,7 @@ th{{color:#9ca3af;font-weight:500}}.empty{{color:#9ca3af}}li{{margin:2px 0}}
 <p>Market regime: {esc(reg_text)}</p>
 {('<h2>Warnings</h2><ul>' + flags + '</ul>') if flags else ''}
 {('<h2>Account does not match the ledger</h2><ul>' + mism + '</ul>') if mism else ''}
+{('<h2>Market brain</h2>' + report["brain_html"]) if report.get("brain_html") else ''}
 <h2>Capital by strategy</h2>
 {allocator.capital_html(report["capital"]["rows"], report["capital"]["totals"], report["capital"]["state"]) if report.get("capital") else '<p class="empty">Not available.</p>'}
 <h2>Sleeves</h2>
@@ -754,6 +790,39 @@ th{{color:#9ca3af;font-weight:500}}.empty{{color:#9ca3af}}li{{margin:2px 0}}
 
 
 # ---------------------------------------------------------------- the main entry point
+
+def _brain_module():
+    """The market brain, or None if its files are not there yet."""
+    import importlib.util
+    if importlib.util.find_spec("market_brain") is None or importlib.util.find_spec("brain_config") is None:
+        return None
+    import market_brain
+    return market_brain
+
+
+def symbols_for_today(ledger, today_iso, brain_module=None):
+    """Every symbol this run may ask IBKR for: the daily sleeves first, then the brain, then monthly sleeves
+    that rebalance today."""
+    out = ["SPY", SC.CASH_SYMBOL]
+    for name in S.SLEEVE_ORDER:
+        if SC.SLEEVE_ENABLED.get(name) and S.FREQ[name] == "daily":
+            out += S.UNIVERSE[name]
+    first = list(dict.fromkeys(out))
+    if brain_module is not None and any(brain_module.mode(p) != "off" for p in brain_module.PARTS):
+        out += brain_module.symbols()
+    for name in S.SLEEVE_ORDER:
+        if SC.SLEEVE_ENABLED.get(name) and S.FREQ[name] == "monthly" and S.month_changed(ledger.last_rebalance.get(name), today_iso):
+            out += S.UNIVERSE[name]
+    return first, list(dict.fromkeys(out))
+
+
+def fetch_window(store, symbols):
+    """Seconds the automatic run may spend loading prices: enough for every symbol that needs a new day, at
+    IBKR's pace (about 55 requests per 10 minutes), but never more than 50 minutes."""
+    need = sum(1 for s in symbols if store.needs_fetch(s))
+    rounds = math.ceil(need / max(1, SC.HISTORY_REQUESTS_PER_10_MIN))
+    return min(3000, max(SC.AUTO_FETCH_SECONDS, (rounds - 1) * 600 + SC.AUTO_FETCH_SECONDS))
+
 
 def run(mode, adapter, force=False, today=None, auto=False):
     """mode: plan (look only), trade (place orders), report (refresh the page from saved data)."""
@@ -782,17 +851,35 @@ def run(mode, adapter, force=False, today=None, auto=False):
 
     ledger = Ledger()
     positions = adapter.positions()
+    try:
+        brain_module = _brain_module()
+    except Exception as e:
+        brain_module = None
+        flags.append(f"Market brain could not load ({e}); the normal rules were used.")
     if mode == "report":
         store = CacheOnlyStore(adapter, today_iso)
     else:
-        store = PriceStore(adapter, today_iso, fetch_seconds=SC.AUTO_FETCH_SECONDS if auto else None)
+        first, wanted = symbols_for_today(ledger, today_iso, brain_module)
+        store = PriceStore(adapter, today_iso)
+        if auto:                                 # long enough for every symbol, so no strategy is starved of prices
+            store = PriceStore(adapter, today_iso, fetch_seconds=fetch_window(store, wanted))
+        store.get_many(first)                    # the daily strategies' prices first
 
     try:
         alloc_state, allocations = allocator.current(today_iso, save=(mode == "trade"))
     except Exception as e:                       # never let the allocation step stop the sleeves
         flags.append(f"Automatic shifting failed ({e}); every sleeve uses its normal share today.")
         alloc_state, allocations = None, dict(allocator.base_allocations())
-    plan = plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, allocations)
+    brain = None
+    if brain_module is not None:
+        try:
+            brain = brain_module.today(store, today_iso, allocations, save=(mode == "trade"))
+        except Exception as e:                   # never let the brain stop the sleeves
+            flags.append(f"Market brain skipped ({e}); the normal rules were used.")
+            brain = None
+    if brain:
+        allocations = brain["allocations"]
+    plan = plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, allocations, brain)
     orders = []
     if mode != "report":
         orders = make_orders(plan, ledger, adapter.quotes, flags)
@@ -800,6 +887,8 @@ def run(mode, adapter, force=False, today=None, auto=False):
         flags.append(f"Ran out of time loading history for {len(store.skipped_for_time)} symbols. Run: python tracker/run_sleeves.py prefetch")
     if store.no_data and mode != "report":
         flags.append("No price history for: " + ", ".join(sorted(set(store.no_data))[:20]))
+    if store.rescaled:
+        flags.append("Price history adjusted for a split: " + ", ".join(sorted(set(store.rescaled))))
 
     if mode == "trade":
         execute_orders(adapter, ledger, orders, today_iso, events)
@@ -832,17 +921,29 @@ def run(mode, adapter, force=False, today=None, auto=False):
     capital = None
     try:
         everything = adapter.all_positions() if hasattr(adapter, "all_positions") else positions
-        cap_rows, cap_totals = allocator.capital_rows(equity, everything, ledger.positions, allocations)
+        budgets = dict(allocations)              # what each sleeve may really use today (share x size)
+        for name, sp in plan["sleeves"].items():
+            budgets[name] = sp["share"] * sp["size"]
+        cap_rows, cap_totals = allocator.capital_rows(equity, everything, ledger.positions, budgets)
         capital = {"rows": cap_rows, "totals": cap_totals, "state": alloc_state}
     except Exception as e:
         flags.append(f"Could not build the capital table: {e}")
+
+    brain_lines, brain_html = [], ""
+    if brain_module is not None and brain:
+        try:
+            brain_lines, brain_html = brain_module.summary_lines(brain), brain_module.summary_html(brain)
+        except Exception as e:                   # a wording problem must never hide the day's trades
+            flags.append(f"Market brain summary skipped ({e}).")
 
     report = {
         "generated": datetime.now(ET).strftime("%Y-%m-%d %H:%M ET"), "mode": mode, "capital": capital,
         "account_id": adapter.account_id, "equity": equity, "regime": plan["regime"],
         "loss": plan["loss"], "factor": plan["factor"], "sleeves": rows, "orders": orders,
         "events": events, "flags": flags, "mismatches": plan["mismatches"], "blocked": plan["blocked"],
-        "cash": plan["cash"],
+        "cash": plan["cash"], "brain": brain,
+        "sizing": "weather dial" if (brain and brain.get("scales") is not None) else "200-day rule",
+        "brain_lines": brain_lines, "brain_html": brain_html,
     }
     path = data_path("sleeves_dashboard.html")
     with open(path, "w") as f:
