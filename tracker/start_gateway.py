@@ -37,7 +37,17 @@ def log(text):
         f.write(line + "\n")
 
 
+def stay_awake():
+    """Keeps the Mac awake while IB Gateway logs in (the Mac's built-in 'caffeinate' tool)."""
+    try:
+        subprocess.Popen(["/usr/bin/caffeinate", "-ims", "-w", str(os.getpid())],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
+
+
 def main():
+    stay_awake()
     if port_open():
         log("IB Gateway is already open and logged in. Nothing to do.")
         return
