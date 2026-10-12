@@ -3,13 +3,40 @@ name: Daily SEC Filing Check
 on:
   schedule:
     - cron: '17 11 * * 2-6'
+    - cron: '17 12 * * 2-6'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: daily-sec-check
+  cancel-in-progress: false
+
 jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      done: ${{ steps.today.outputs.done }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: See if this morning's results are already saved
+        id: today
+        run: |
+          # results saved since 10:00 UTC today (6 AM New York time in summer, 5 AM in winter) count as this morning's
+          if git log --since="$(date -u +%Y-%m-%d)T10:00:00Z" --author="github-actions" --format=%h | grep -q .; then
+            echo "done=yes" >> "$GITHUB_OUTPUT"
+            echo "This morning's results are already saved, so this backup run does nothing."
+          else
+            echo "done=no" >> "$GITHUB_OUTPUT"
+          fi
+
   run-script:
+    needs: check
+    if: github.event_name == 'workflow_dispatch' || needs.check.outputs.done != 'yes'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -56,8 +83,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -f daily_signals_ranked.csv
-          git commit -m "Update daily results" || echo "Nothing new to save"
-          git push
+          git commit --allow-empty -m "Update daily results"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              exit 0
+            fi
+            echo "Push did not work, trying again in 10 seconds..."
+            sleep 10
+          done
+          exit 1
 
       - name: Email the reports
         uses: dawidd6/action-send-mail@v3
