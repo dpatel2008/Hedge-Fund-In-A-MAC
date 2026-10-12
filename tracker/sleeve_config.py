@@ -55,7 +55,7 @@ DAILY_LOSS_LIMIT_PCT = 0.02       # if the account fell this much since the last
 MAX_ORDERS_PER_RUN = 40
 MIN_ORDER_DOLLARS = 500
 REBALANCE_BAND = 0.20             # leave a held position alone if it is within 20% of its target size
-SLEEVE_LIMIT_SLIPPAGE = 0.003     # limit orders are placed 0.3% through the quote so they fill
+SLEEVE_LIMIT_SLIPPAGE = 0.01      # limit orders are placed 1% through the (15-minute delayed) quote so they fill
 MIN_SHORTABLE_LEVEL = 1.5
 ALLOW_UNKNOWN_SHORTABLE = True
 
