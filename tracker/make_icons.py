@@ -3,8 +3,9 @@ make_icons.py
 Run once:  python tracker/make_icons.py
 Puts five double-click icons on your Desktop:
 
-  Run Tracker.command      runs the SEC-filing tracker now and places its paper trades (no email; the
-                           strategy sleeves only trade in the scheduled morning run)
+  Run Tracker.command      runs today's full run now, the same as the scheduled morning run (tracker, strategy
+                           sleeves, email). Use it when an alert says the run did not happen. It does nothing
+                           if today's run already finished.
   Plan Only.command        looks at today's plan and places NO orders
   Open Dashboard.command   opens the latest dashboard
   Capital Report.command   shows how much money each strategy is using (places NO orders)
@@ -27,11 +28,10 @@ def script(lines):
 def main():
     cd = f'cd "{PROJECT}" || exit 1'
     run = f'"{PYTHON}" tracker/run_tracker.py'
-    alert = f'"{PYTHON}" tracker/phone_alert.py'
     icons = {
         "Run Tracker.command": script([
             cd,
-            f'{run} trade && {alert} "Tracker" "Manual run finished. Open the dashboard to see what happened." >/dev/null 2>&1',
+            f'"{PYTHON}" tracker/auto_run.py --manual',
             'echo ""',
             'echo "Done. You can close this window."',
         ]),
