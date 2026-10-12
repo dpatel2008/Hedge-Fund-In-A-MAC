@@ -44,7 +44,7 @@ def main():
         from broker_extra import IBAdapter
         from broker_ib import IBBroker
         C.IB_CLIENT_ID = SC.MANUAL_CLIENT_ID     # a different connection number, so it never blocks the scheduled run
-        broker = IBBroker()
+        broker = IBBroker(request_timeout=0)      # a 30-year download can take longer than the normal limit
         broker.connect()
         try:
             print(f"Downloading market history for {len(M.symbols())} funds, as many years as IBKR gives.")
