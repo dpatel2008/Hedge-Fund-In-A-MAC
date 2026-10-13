@@ -1,7 +1,7 @@
 """
 signal_lab.py
 The Signal Lab: measures which signals really make money, the way a big quant fund tests ideas before trading them.
-GitHub runs it twice a week (the "Signal Lab" workflow) and emails the report card. It only reads public data and
+GitHub runs it every weekday morning (the "Signal Lab" workflow) and emails the report card. It only reads public data and
 writes reports in lab/results. It never places orders and never touches the tracker.
 
 Each run:
@@ -9,7 +9,8 @@ Each run:
   2. downloads new SEC data: every filing of every form type, insider trades, going-concern warnings
   3. reads more 8-Ks and 10-K/10-Qs with the daily scanner's exact rules (a little more each run until all are read)
   4. measures every signal, every form type and your real signals so far, and replays the tracker's rules
-  5. writes the report card
+  5. tests statistical arbitrage (pairs trading) on every liquid US stock
+  6. writes the report card
 
   python lab/signal_lab.py
 """
@@ -24,6 +25,7 @@ import lab_events as E
 import lab_prices as LP
 import lab_report as R
 import lab_sec as S
+import lab_statarb as SA
 import lab_study as ST
 
 GC_CHECKS_PER_RUN = int(os.environ.get("LAB_GC_CHECKS", "1000000"))   # tests can lower this
@@ -102,8 +104,9 @@ def main():
         for p in problems + ([problem] if problem else []):
             status["warnings"].append(p)
     status["warnings"].extend(status.get("problems") or [])
-    if (status.get("prices") or {}).get("splits_problem"):
-        status["warnings"].append(status["prices"]["splits_problem"])
+    for part in ("splits_problem", "types_problem"):
+        if (status.get("prices") or {}).get(part):
+            status["warnings"].append(status["prices"][part])
     if sec.stopped:
         status["warnings"].append("The SEC asked us to slow down several times, so SEC downloads stopped early. "
                                   "The next run continues where this one left off.")
@@ -163,6 +166,9 @@ def study(start, end, status):
     form_events = None
     live = E.live_signals(status)
     results["live"] = safely(status, "Live record", ST.study_live, M, live) or {}
+    statarb = safely(status, "Stat-arb test", SA.study_statarb, M)
+    if statarb:
+        results["statarb"], results["statarb_trades"] = statarb
     return results
 
 
