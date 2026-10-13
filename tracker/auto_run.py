@@ -314,12 +314,27 @@ def release_lock(path):
         pass
 
 
-def send_email(subject, body, attachments=None):
+def send_email(subject, body, attachments=None, html=None, images=None):
     try:
+        if html:
+            try:
+                return notify.send_email(subject, body, attachments, html=html, images=images)
+            except Exception as e:               # the overview must never cost the email: send the plain one
+                log(f"Email with the overview failed ({type(e).__name__}: {e}), so the plain email was sent.")
         return notify.send_email(subject, body, attachments)
     except Exception as e:                       # an email problem must never stop the run
         log(f"Email failed: {e}")
         return False
+
+
+def overview(report, body, today, mode, notices):
+    """The portfolio overview at the top of the email: (html, images), or (None, None). Never stops the run."""
+    try:
+        import email_overview
+        return email_overview.build(today, report, None, body, mode, notices)
+    except Exception:
+        log("Email overview skipped:\n" + traceback.format_exc()[-800:])
+        return None, None
 
 
 def main():
@@ -446,9 +461,12 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
                 subject += f", sleeves {sleeve_trades} trade(s)"
             body = problem or "The tracker part did not finish."
         end_minutes = now_minutes()
+        notices = [problem] if problem else []
         if retry and not plan_only:
-            body = (f"The run did not fully finish (lost the connection or IBKR's data was not ready). "
-                    f"{next_try_words(end_minutes)}\n\n" + body)
+            unfinished = (f"The run did not fully finish (lost the connection or IBKR's data was not ready). "
+                          f"{next_try_words(end_minutes)}")
+            notices.insert(0, unfinished)
+            body = unfinished + "\n\n" + body
             subject += " - will try again" if end_minutes < LAST_TRY else " - did NOT finish"
         if sleeve_text:
             body = body + "\n\n" + sleeve_text
@@ -458,7 +476,8 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             if capital:
                 body = body + "\n\n" + capital
         attachments = [p for p in (path, sleeve_path) if p]
-        sent = send_email(subject, body, attachments)
+        page, images = overview(report, body, today, mode, notices)
+        sent = send_email(subject, body, attachments, page, images)
         log(f"Finished ({mode}). Email sent: {sent}. {subject}")
 
         if not plan_only:
