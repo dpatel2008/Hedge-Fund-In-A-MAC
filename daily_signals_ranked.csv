@@ -1,8 +1,8 @@
 company,ticker,cik,score,form_types,reasons,date_filed,num_filings,sample_filing_url
+ACCENDRA HEALTH INC/VA/,ACH,0000075252,50,8-K,8-K filed (+10) | Negative 8-K news: delisting notice (+30) | Stock fell 11.2% on the day (+10),20261009,1,https://www.sec.gov/Archives/edgar/data/75252/0001104659-26-115043.txt
 Iron Horse Acquisition II Corp.,IRHO,0002051985,45,10-Q; 8-K,8-K filed (+10) | Going concern language in filing (+35),20261009,2,https://www.sec.gov/Archives/edgar/data/2051985/0001213900-26-108511.txt
 New Horizon Aircraft Ltd.,HOVR,0001930021,45,10-Q; 8-K,8-K filed (+10) | Going concern language in filing (+35),20261009,2,https://www.sec.gov/Archives/edgar/data/1930021/0001213900-26-108211.txt
 Cerence Inc.,CRNC,0001768267,40,4,5 insiders sold stock (+40),20261009,5,https://www.sec.gov/Archives/edgar/data/1768267/0001768267-26-000025.txt
-ACCENDRA HEALTH INC/VA/,ACH,0000075252,40,8-K,8-K filed (+10) | Negative 8-K news: delisting notice (+30),20261009,1,https://www.sec.gov/Archives/edgar/data/75252/0001104659-26-115043.txt
 "Alaunos Therapeutics, Inc.",TCRT,0001107421,40,8-K,8-K filed (+10) | Negative 8-K news: delisting notice (+30),20261009,1,https://www.sec.gov/Archives/edgar/data/1107421/0001193125-26-419154.txt
 Better Home & Finance Holding Co,BETR,0001835856,40,8-K,8-K filed (+10) | Negative 8-K news: delisting notice (+30),20261009,1,https://www.sec.gov/Archives/edgar/data/1835856/0001835856-26-000074.txt
 Evernorth Holdings Inc.,,0002092592,40,8-K,8-K filed (+10) | Negative 8-K news: delisting notice (+30),20261009,1,https://www.sec.gov/Archives/edgar/data/2092592/0001193125-26-419146.txt
