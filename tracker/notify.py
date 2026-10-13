@@ -29,18 +29,21 @@ def load_settings():
     return data
 
 
-def send_email(subject, body, attachments=None):
-    """Returns True if the email was sent."""
-    settings = load_settings()
-    if not settings:
-        print("Email is not set up yet. Run: python tracker/setup_email.py")
-        return False
-
+def build_message(settings, subject, body, attachments=None, html=None, images=None):
+    """The email itself. body is the plain text. html (optional) is the same email as a page with the portfolio
+    overview (most mail apps show that; the plain text is kept for the rest). images: {content id: PNG bytes}
+    for pictures inside that page."""
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = settings["username"]
     message["To"] = settings["to"]
     message.set_content(body)
+    if html:
+        message.add_alternative(html, subtype="html")
+        page = message.get_payload()[-1]
+        for cid, data in (images or {}).items():
+            page.add_related(data, maintype="image", subtype="png", cid=f"<{cid}>", disposition="inline",
+                             filename=cid.split("@")[0] + ".png")
     for path in attachments or []:
         try:
             with open(path, "rb") as f:
@@ -48,7 +51,17 @@ def send_email(subject, body, attachments=None):
         except OSError:
             continue
         message.add_attachment(data, maintype="text", subtype="html", filename=os.path.basename(path))
+    return message
 
+
+def send_email(subject, body, attachments=None, html=None, images=None):
+    """Returns True if the email was sent."""
+    settings = load_settings()
+    if not settings:
+        print("Email is not set up yet. Run: python tracker/setup_email.py")
+        return False
+
+    message = build_message(settings, subject, body, attachments, html, images)
     try:
         context = ssl.create_default_context(cafile=certifi.where())
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=30) as server:
