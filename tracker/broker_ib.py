@@ -15,6 +15,7 @@ import config as C
 
 SYNC_SECONDS = 20          # time allowed to load the account's positions, orders and values when connecting
 REQUEST_TIMEOUT = 90       # no single question to IBKR may wait longer than this (stops a run from hanging forever)
+HISTORY_TIMEOUT = 30       # price history for one stock: give up after this long (it normally takes 1-2 seconds)
 CONNECT_TRIES = 2
 OUR_ORDER_TAGS = ("SECW-", "SLEEVE-")    # every order this project places has an order reference starting with one of these
 
@@ -253,7 +254,7 @@ class IBBroker:
         try:
             bars = self.ib.reqHistoricalData(
                 contract, endDateTime="", durationStr=f"{days} D",
-                barSizeSetting="1 day", whatToShow="TRADES", useRTH=True, formatDate=1,
+                barSizeSetting="1 day", whatToShow="TRADES", useRTH=True, formatDate=1, timeout=HISTORY_TIMEOUT,
             )
         except Exception:
             return []
