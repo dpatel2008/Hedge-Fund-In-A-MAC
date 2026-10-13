@@ -5,6 +5,9 @@ IBAdapter gives the sleeves one small, simple interface to the broker (and lets 
 """
 
 import math
+import time
+
+HISTORY_TIMEOUT = 45      # price history for one symbol: give up after this long (it normally takes 1-2 seconds)
 
 
 def _num(x):
@@ -87,18 +90,23 @@ class IBAdapter:
         self.ib.sleep(seconds)
 
     def daily_bars(self, symbol, duration):
-        """duration like '2 Y' or '10 D'. Returns [{"date", "close"}, ...] oldest first."""
+        """duration like '2 Y' or '10 D'. Returns [{"date", "close"}, ...] oldest first.
+        Prints one line per symbol, so a long download shows it is still working."""
+        started = time.time()
         contract = self.broker._stock(symbol)
         if contract is None:
+            print(f"  prices: {symbol} not found at IBKR")
             return []
         try:
             bars = self.ib.reqHistoricalData(
                 contract, endDateTime="", durationStr=duration, barSizeSetting="1 day",
-                whatToShow="TRADES", useRTH=True, formatDate=1,
+                whatToShow="TRADES", useRTH=True, formatDate=1, timeout=HISTORY_TIMEOUT,
             )
         except Exception:
-            return []
-        return [{"date": str(b.date)[:10], "close": float(b.close)} for b in (bars or []) if _positive(b.close)]
+            bars = []
+        out = [{"date": str(b.date)[:10], "close": float(b.close)} for b in (bars or []) if _positive(b.close)]
+        print(f"  prices: {symbol} {len(out)} day(s) in {time.time() - started:.1f}s")
+        return out
 
     def quotes(self, symbols):
         """{symbol: {"price", "bid", "ask", "shortable_level"}} for the symbols that have a price."""
