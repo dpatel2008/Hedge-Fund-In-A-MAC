@@ -1,0 +1,83 @@
+name: Signal Lab
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 13 * * 3,6'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: signal-lab
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests numpy
+
+      - name: Get the lab's saved data
+        uses: actions/cache/restore@v4
+        with:
+          path: lab_data
+          key: lab-data-${{ github.run_id }}
+          restore-keys: |
+            lab-data-
+
+      - name: Run the Signal Lab
+        env:
+          POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
+          LAB_MINUTES: '300'
+        run: python lab/signal_lab.py
+
+      - name: Keep the lab's data for next time
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: lab_data
+          key: lab-data-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Save the report card to the repo
+        if: always()
+        run: |
+          if [ ! -f lab/results/report_card.html ]; then
+            echo "No report card was made this run."
+            exit 0
+          fi
+          git config user.name "signal-lab-bot"
+          git config user.email "signal-lab-bot@users.noreply.github.com"
+          git add lab/results
+          git commit -m "Signal Lab report card" || exit 0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              exit 0
+            fi
+            echo "Push did not work, trying again in 15 seconds..."
+            sleep 15
+          done
+          exit 1
+
+      - name: Email the report card
+        if: always() && hashFiles('lab/results/report_card.html') != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Signal Lab report card"
+          to: ${{ secrets.EMAIL_TO }}
+          from: Signal Lab
+          html_body: file://lab/results/report_card.html
+          attachments: lab/results/report_card.html,lab/results/*.csv
