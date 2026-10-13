@@ -146,7 +146,53 @@ def headline(results):
     if live.get("measured"):
         out.append(f"Your real signals so far: {live['measured']:,} measured since {live.get('first_day')}. "
                    f"That is too early to judge; the lab keeps adding them every run.")
+    sa = results.get("statarb") or {}
+    for r in sa.get("methods", [])[:2]:
+        out.append(f"Stat arb, {r['name']}: {pct(r['yearly_before'])} a year before costs, {pct(r['yearly_after'])} "
+                   f"after, Sharpe {num(r['sharpe_after'], 2)} -> {r['verdict']} ({VERDICT_WORDS.get(r['verdict'], '')}).")
     return out
+
+
+def statarb_section(sa):
+    """The stat-arb (pairs trading) part of the report card."""
+    if not sa:
+        return ""
+    parts = ["<h2>Statistical arbitrage (pairs trading)</h2>"]
+    for note in sa.get("notes", []):
+        parts.append(f"<p class=note>{esc(note)}</p>")
+    rows = sa.get("methods") or []
+    if rows:
+        head = ("<tr><th>Method</th><th>Trades</th><th>Winners</th><th>Avg days held</th><th>Per year before costs</th>"
+                "<th>Per year after costs</th><th>Sharpe after costs</th><th>Worst drop</th><th>1st half</th>"
+                "<th>2nd half</th><th>Market beta</th><th>Verdict</th></tr>")
+        body = []
+        for r in rows:
+            body.append(
+                f"<tr><td>{esc(r['name'])}<br><span class=note>{esc(r['what'])}</span></td><td>{r['round_trips']:,}</td>"
+                f"<td>{pct(r['win_rate'], 0, False)}</td><td>{num(r['avg_days'], 1)}</td><td>{pct(r['yearly_before'])}</td>"
+                f"<td>{pct(r['yearly_after'])}</td><td>{num(r['sharpe_after'], 2)}</td><td>{pct(r['worst_drop'])}</td>"
+                f"<td>{pct(r['first_half'])}</td><td>{pct(r['second_half'])}</td><td>{num(r.get('beta_to_spy'), 2)}</td>"
+                f"<td>{badge(r['verdict'])}</td></tr>")
+        first = rows[0]
+        parts.append(f"<p class=note>Tested from {esc(first['first_day'])} to {esc(first['last_day'])} "
+                     f"({first['days']} trading days; the first 12 months of prices are only used to pick the pairs). "
+                     f"Every trade opens and closes at the next morning's open after the signal, pays costs on every "
+                     f"leg and {SHORT_BORROW_PER_YEAR:.0%} a year to borrow the shorted shares. \"Per year\" is the "
+                     f"return on the money each trade ties up ($1 per pair or per stock). Sharpe = return per unit of "
+                     f"risk (above 1 is good, above 2 is excellent). Market beta near 0 means it does not depend on the "
+                     f"market going up.</p>")
+        parts.append(f"<div class=wrap><table>{head}{''.join(body)}</table></div>")
+        parts.append("<p class=note><b>WORKS</b> = made money after costs, clearly enough to trust (t-stat 2+), in "
+                     "both halves of the test; <b>WEAK</b> = made a little after costs, but not clearly enough to trust "
+                     "yet; <b>NO EDGE</b> = did not make money after costs; <b>LOSES MONEY</b> = clearly lost money "
+                     "after costs; <b>TOO FEW</b> = fewer than 30 trades, not enough to judge. A strategy only goes "
+                     "into the paper account if it WORKS here and again on more years of prices.</p>")
+    pairs = sa.get("pairs_now") or []
+    if pairs:
+        parts.append("<h3>The pairs the paper's method would watch right now</h3><p class=note>The 20 pairs whose "
+                     "prices moved most closely together over the last 12 months.</p><p>" +
+                     ", ".join(f"{esc(p['a'])} / {esc(p['b'])}" for p in pairs) + "</p>")
+    return "".join(parts)
 
 
 def write_report(results, status):
@@ -214,6 +260,8 @@ def write_report(results, status):
                                   f"Read from the lists your scanner saved each morning ({live['measured']:,} measured "
                                   f"over {live.get('trading_days', 0)} trading days, {live.get('pending', 0)} too new to "
                                   f"measure). Needs about 60 trading days before it means much. This grows every run."))
+
+    parts.append(statarb_section(results.get("statarb")))
 
     cov_lines = [
         f"Insider data: {cov.get('insider_quarters', 0)} of {cov.get('insider_quarters_needed', 0)} quarters "
@@ -288,7 +336,21 @@ def write_report(results, status):
         write_csv(os.path.join(RESULTS_DIR, "replay_trades.csv"), keys, [[t[k] for k in keys] for t in trades])
     if rep:
         write_csv(os.path.join(RESULTS_DIR, "replay_curve.csv"), ["date", "unhedged", "hedged"], rep["curve"])
-    summary = {k: v for k, v in results.items() if k not in ("replay_trades",)}
+    sa_rows = (results.get("statarb") or {}).get("methods") or []
+    if sa_rows:
+        keys = ["key", "name", "verdict", "first_day", "last_day", "days", "round_trips", "win_rate", "avg_days",
+                "avg_trade", "yearly_before", "yearly_after", "sharpe_before", "sharpe_after", "t", "first_half",
+                "second_half", "worst_drop", "beta_to_spy"]
+        write_csv(os.path.join(RESULTS_DIR, "statarb.csv"), keys, [[r.get(k) for k in keys] for r in sa_rows])
+    sa_trades = results.get("statarb_trades") or []
+    sector = [t for t in sa_trades if t.get("method") == "sector"]
+    if len(sector) > 1000:                              # keep the file small: every pairs trade, the newest sector ones
+        keep = set(id(t) for t in sorted(sector, key=lambda t: t["closed"])[-1000:])
+        sa_trades = [t for t in sa_trades if t.get("method") != "sector" or id(t) in keep]
+    if sa_trades:
+        keys = list(sa_trades[0].keys())
+        write_csv(os.path.join(RESULTS_DIR, "statarb_trades.csv"), keys, [[t.get(k) for k in keys] for t in sa_trades])
+    summary = {k: v for k, v in results.items() if k not in ("replay_trades", "statarb_trades")}
     if summary.get("replay"):
         summary["replay"] = {k: v for k, v in summary["replay"].items() if k != "curve"}
     summary["status"] = status
