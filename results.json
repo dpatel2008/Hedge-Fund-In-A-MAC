@@ -1,0 +1,307 @@
+{
+ "updated": "2026-10-13 19:34 ET",
+ "note": "Paper trading results. Not real money. Not investment advice.",
+ "account": {
+  "equity": 1010468.28,
+  "start_equity": 1000650.65,
+  "return_pct": 0.00981,
+  "spy_return_pct": 0.00148,
+  "since": "2026-10-05"
+ },
+ "curve": [
+  {
+   "date": "2026-10-05",
+   "equity": 1000650.65,
+   "spy": 774.94
+  },
+  {
+   "date": "2026-10-06",
+   "equity": 1000650.65,
+   "spy": 779.6
+  },
+  {
+   "date": "2026-10-07",
+   "equity": 1000434.58,
+   "spy": 777.53
+  },
+  {
+   "date": "2026-10-08",
+   "equity": 1002607.98,
+   "spy": 776.09
+  },
+  {
+   "date": "2026-10-09",
+   "equity": 1006130.18,
+   "spy": null
+  },
+  {
+   "date": "2026-10-12",
+   "equity": 1010468.28,
+   "spy": null
+  }
+ ],
+ "tracker": {
+  "open_positions": [
+   {
+    "symbol": "PENG",
+    "side": "LONG",
+    "qty": 622.0,
+    "entry_price": 71.91,
+    "price": 71.91,
+    "pnl": 0.0,
+    "pnl_pct": 0.0,
+    "exit_by": "2026-10-21",
+    "signals": "POSITIVE_8K; EVENT_8K"
+   },
+   {
+    "symbol": "CHRN",
+    "side": "SHORT",
+    "qty": 1636.0,
+    "entry_price": 19.92,
+    "price": 19.92,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-21",
+    "signals": "DILUTION; NEGATIVE_8K; EVENT_8K"
+   },
+   {
+    "symbol": "ARQQ",
+    "side": "SHORT",
+    "qty": 312.0,
+    "entry_price": 22.39,
+    "price": 22.39,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-21",
+    "signals": "INSIDER_SELLING"
+   },
+   {
+    "symbol": "BCYC",
+    "side": "SHORT",
+    "qty": 11154.0,
+    "entry_price": 3.72,
+    "price": 3.72,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-21",
+    "signals": "INSIDER_SELLING"
+   },
+   {
+    "symbol": "AGMB",
+    "side": "LONG",
+    "qty": 1332.0,
+    "entry_price": 8.85,
+    "price": 8.85,
+    "pnl": 0.0,
+    "pnl_pct": 0.0,
+    "exit_by": "2026-10-22",
+    "signals": "INSIDER_BUYING"
+   },
+   {
+    "symbol": "VYLR",
+    "side": "SHORT",
+    "qty": 594.0,
+    "entry_price": 74.75,
+    "price": 74.75,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-22",
+    "signals": "NEGATIVE_8K; EVENT_8K"
+   },
+   {
+    "symbol": "SOPH",
+    "side": "SHORT",
+    "qty": 1276.0,
+    "entry_price": 7.14,
+    "price": 7.14,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-22",
+    "signals": "INSIDER_SELLING"
+   },
+   {
+    "symbol": "RUN",
+    "side": "SHORT",
+    "qty": 6697.0,
+    "entry_price": 7.46,
+    "price": 7.46,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-22",
+    "signals": "INSIDER_SELLING"
+   },
+   {
+    "symbol": "LEVI",
+    "side": "LONG",
+    "qty": 2661.0,
+    "entry_price": 18.903619,
+    "price": 18.903619,
+    "pnl": 0.0,
+    "pnl_pct": 0.0,
+    "exit_by": "2026-10-22",
+    "signals": "POSITIVE_8K; EVENT_8K"
+   }
+  ],
+  "closed_trades": [],
+  "closed_count": 0,
+  "closed_pnl": 0,
+  "hit_rate": null
+ },
+ "sleeves": [
+  {
+   "name": "trend",
+   "value": 0.0,
+   "realized": 0.0,
+   "unrealized": 0.0,
+   "positions": []
+  },
+  {
+   "name": "momentum",
+   "value": 0.0,
+   "realized": 0.0,
+   "unrealized": 0.0,
+   "positions": []
+  },
+  {
+   "name": "meanrev",
+   "value": 0.0,
+   "realized": 0.0,
+   "unrealized": 0.0,
+   "positions": []
+  },
+  {
+   "name": "cash",
+   "value": 0.0,
+   "realized": 0.0,
+   "unrealized": 0.0,
+   "positions": []
+  }
+ ],
+ "capital": [
+  {
+   "strategy": "SEC-filing tracker",
+   "budget_pct": 0.35,
+   "using": 297289.41,
+   "using_pct": 0.2942,
+   "open_pnl": 8789.64
+  },
+  {
+   "strategy": "IWM hedge",
+   "budget_pct": null,
+   "using": 138131.43,
+   "using_pct": 0.1367,
+   "open_pnl": 780.82
+  },
+  {
+   "strategy": "Trend",
+   "budget_pct": 0.18,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "Sector rotation",
+   "budget_pct": 0.0,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "Momentum",
+   "budget_pct": 0.14,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "Mean reversion",
+   "budget_pct": 0.08,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "Pairs",
+   "budget_pct": 0.0,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "T-bills (idle cash)",
+   "budget_pct": null,
+   "using": 0.0,
+   "using_pct": 0.0,
+   "open_pnl": 0.0
+  },
+  {
+   "strategy": "Not used by any strategy",
+   "budget_pct": 0.1,
+   "using": 575056.26,
+   "using_pct": 0.5691,
+   "open_pnl": 0.0
+  }
+ ],
+ "capital_as_of": "2026-10-12 17:43 ET",
+ "regime": {
+  "state": "normal",
+  "spy": 778.57,
+  "sma": 722.9284,
+  "above": true,
+  "vol20": 0.09952043864557364,
+  "sma_days": 200
+ },
+ "overview": {
+  "day": "2026-10-12",
+  "periods": [
+   {
+    "label": "Since the last run",
+    "since": "2026-10-09",
+    "dollars": 4338.1,
+    "pct": 0.00431,
+    "spy_pct": null,
+    "spy_dollars": null
+   },
+   {
+    "label": "Since the start",
+    "since": "2026-10-05",
+    "dollars": 9817.63,
+    "pct": 0.00981,
+    "spy_pct": null,
+    "spy_dollars": null
+   }
+  ],
+  "strategies": [
+   {
+    "key": "tracker",
+    "name": "SEC-filing tracker",
+    "using": 297289.41,
+    "using_pct": 0.2942,
+    "open_pnl": 8789.64,
+    "closed_pnl": 0,
+    "total_pnl": 8789.64
+   },
+   {
+    "key": "hedge",
+    "name": "IWM hedge",
+    "using": 138131.43,
+    "using_pct": 0.1367,
+    "open_pnl": 780.82,
+    "closed_pnl": null,
+    "total_pnl": 780.82
+   },
+   {
+    "key": "plain",
+    "name": "Plain cash",
+    "using": 575056.26,
+    "using_pct": 0.5691,
+    "open_pnl": null,
+    "closed_pnl": null,
+    "total_pnl": null
+   }
+  ],
+  "strategies_reported_today": true,
+  "today_trades": [],
+  "scorecard": []
+ }
+}
