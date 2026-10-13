@@ -25,6 +25,7 @@ ET = ZoneInfo("America/New_York")
 SIGNAL_TRIES = 3              # download attempts for the signal list before giving up for the day
 SIGNAL_RETRY_SECONDS = 10
 STALE_SIGNAL_DAYS = 4         # warn in the email when the newest signal is older than this
+PLAN_TIME_LIMIT_SECONDS = 600 # checking signals stops after 10 minutes, so the strategy sleeves always get their turn
 
 
 class RetryLater(Exception):
@@ -223,16 +224,20 @@ def _score(sig):
 
 
 class Session:
-    """Caches quotes and price history so each symbol is only requested once per run."""
+    """Caches quotes and price history so each symbol is only requested once per run. Also adds up how long IBKR
+    takes to answer each kind of request, for the progress lines."""
 
     def __init__(self, broker):
         self.broker = broker
         self._quotes = {}
         self._bars = {}
+        self.seconds = {"prices": 0.0, "history": 0.0, "options": 0.0}
 
     def quote(self, symbol):
         if symbol not in self._quotes:
+            started = time.time()
             self._quotes[symbol] = self.broker.snapshot(symbol)
+            self.seconds["prices"] += time.time() - started
         return self._quotes[symbol]
 
     def price(self, symbol):
@@ -241,7 +246,9 @@ class Session:
 
     def bars(self, symbol):
         if symbol not in self._bars:
+            started = time.time()
             self._bars[symbol] = self.broker.history(symbol, C.HISTORY_DAYS) or []
+            self.seconds["history"] += time.time() - started
         return self._bars[symbol]
 
 
@@ -258,12 +265,12 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
     new_by_side = {"LONG": int(opened_today.get("LONG", 0)), "SHORT": int(opened_today.get("SHORT", 0))}
     new_trades = new_by_side["LONG"] + new_by_side["SHORT"]
     side_caps = {"LONG": C.MAX_NEW_LONGS_PER_RUN, "SHORT": C.MAX_NEW_SHORTS_PER_RUN}
-    option_count = 0
     spreads_planned = 0
     min_score = min(C.MIN_SCORE_TO_TRADE, C.MIN_SCORE_TO_TRADE_LONG)
     slots = max(0, C.MAX_OPEN_POSITIONS - len(open_symbols))
     added = 0                                         # new positions in this run (they use up open slots)
     bench_closes = None
+    started = time.time()
 
     for sig in signals:
         score = _score(sig)
@@ -309,8 +316,19 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
         if symbol in avoid:
             skip(avoid[symbol])
             continue
+        if new_trades >= C.MAX_NEW_TRADES_PER_RUN or added >= slots:
+            skip("position or new-trade limit reached")            # no room: don't spend time asking IBKR about it
+            continue
+        if new_by_side[direction] >= side_caps[direction]:
+            skip(f"all {direction.lower()} slots for this run are used")
+            continue
+        spent = time.time() - started
+        if spent > PLAN_TIME_LIMIT_SECONDS:
+            skip("not checked: ran out of time this run (IBKR was slow)")
+            continue
 
         analyzed += 1
+        print(f"  checking {symbol} ({analyzed} of up to {C.MAX_CANDIDATES_TO_ANALYZE}, {spent:.0f}s so far)")
         quote = session.quote(symbol)
         if not quote or not quote.get("price"):
             skip("no quote from IBKR (symbol not found or no data)")
@@ -396,9 +414,10 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
         style = A.option_style(score)
         row["opt_style"] = style
         chain = None
-        if decision == "TRADE" or option_count < C.OPTION_MAX_CANDIDATES:
-            option_count += 1
+        if decision == "TRADE":                       # option prices only for real trades (each look takes a while)
+            asked = time.time()
             chain = broker.option_chain(symbol, price)
+            session.seconds["options"] += time.time() - asked
             ideas = A.option_ideas(direction, price, chain, style)
             for key, value in ideas.items():
                 row[key] = round(value, 4) if isinstance(value, float) else value
@@ -414,6 +433,9 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
             if plan_spread(row, direction, equity, chain, open_spread_count + spreads_planned):
                 spreads_planned += 1
         plan.append(row)
+    t = session.seconds
+    print(f"  Checked {analyzed} stock(s) in {time.time() - started:.0f}s (IBKR answers: prices {t['prices']:.0f}s, "
+          f"history {t['history']:.0f}s, options {t['options']:.0f}s).")
     return plan
 
 
@@ -1011,6 +1033,7 @@ def run(mode, broker, signals_path=None, force=False, today=None):
             avoid = {}
         plan = build_plan(session, signals, equity, {t["symbol"] for t in open_trades}, today, len(open_options),
                           opened_today=counts, avoid=avoid)
+        print("Running the safety checks on the planned trades...")
         try:
             guard_notes = risk.apply_entry_guards(plan, session, open_trades, equity, today)
         except Exception as exc:                       # a guard problem must never stop the tracker
