@@ -6,7 +6,7 @@ Paper account only.
 
 # ---------------------------------------------------------------- master switches
 SLEEVES_ENABLED = True           # False = sleeves never place orders (the "plan" look-only command still works). Change to True to go live, by hand and in the daily auto run
-PUBLISH_RESULTS = False           # True = publish results.json to GitHub after each run (see the steps)
+PUBLISH_RESULTS = True           # True = publish results.json to GitHub after each run (see the steps)
 
 # Which sleeves are on, and the share of the account value each one may use at most.
 SLEEVE_ENABLED = {
