@@ -1,8 +1,9 @@
 """
 publish_results.py
-Builds results.json (account value, positions, closed trades, sleeves) and publishes it to your GitHub
-repository so a Lovable page can show it. It contains your PAPER account results only, never the
-account number, and the repository is public, so anyone with the link can read it.
+Builds results.json (account value, positions, closed trades, sleeves, and the same overview as the top of the
+daily email: money made next to SPY, money by strategy, today's trades and the closed-trade scorecard) and
+publishes it to your GitHub repository so the Lovable page can show it. It contains your PAPER account results
+only, never the account number, and the repository is public, so anyone with the link can read it.
 
   python tracker/publish_results.py            build results.json, then publish it to GitHub
   python tracker/publish_results.py --no-push  only build the file
@@ -40,6 +41,47 @@ def _rows(name):
             return list(csv.DictReader(f))
     except FileNotFoundError:
         return []
+
+
+def _r(x, digits=2):
+    return round(x, digits) if isinstance(x, (int, float)) and math.isfinite(x) else None
+
+
+def overview(day=None):
+    """The email overview's numbers, for the dashboard. {} if email_overview.py is missing or a file is unreadable."""
+    try:
+        import email_overview as O
+    except ImportError:
+        return {}
+    points = O.equity_points()
+    day = day or (points[-1][0] if points else datetime.now(ET).date())
+    closed = O.closed_trades(None)
+    sleeve_report = O.load_sleeve_report(day)
+    periods = [{"label": p["label"], "since": p["since"].isoformat(), "dollars": _r(p["dollars"]),
+                "pct": _r(p["pct"], 5), "spy_pct": _r(p["spy"], 5), "spy_dollars": _r(p["spy_dollars"])}
+               for p in O.periods(points)]
+    strategies = []
+    for r in O.strategy_rows(None, sleeve_report, closed):
+        total = None
+        if r["open"] is not None or r["closed"] is not None:
+            total = (r["open"] or 0.0) + (r["closed"] or 0.0)
+        strategies.append({"key": r["key"], "name": r["name"], "using": _r(r["using"]),
+                           "using_pct": _r(r["using_pct"], 4), "open_pnl": _r(r["open"]),
+                           "closed_pnl": _r(r["closed"]), "total_pnl": _r(total)})
+    trades = [{"strategy": t["strategy"], "strategy_name": O.NAMES.get(t["strategy"], t["strategy"]),
+               "action": t["action"], "symbol": t["what"], "shares": _r(t["shares"], 4), "price": _r(t["price"], 4),
+               "pnl": _r(t["pnl"]), "note": t["note"]} for t in O.todays_trades(day, None, closed)]
+    groups = [("Tracker stocks", [t["pnl"] for t in closed if not O.is_option(t)]),
+              ("Tracker options", [t["pnl"] for t in closed if O.is_option(t)]),
+              ("Strategy sleeves", [t["pnl"] for t in O.sleeve_trades() if t["pnl"] and t["sleeve"] != "cash"])]
+    scorecard = []
+    for name, pnls in groups:
+        s = O.score(pnls)
+        if s:
+            scorecard.append({"group": name, "trades": s["n"], "win_rate": _r(s["win_rate"], 4),
+                              "total_pnl": _r(s["total"]), "avg_win": _r(s["avg_win"]), "avg_loss": _r(s["avg_loss"])})
+    return {"day": day.isoformat(), "periods": periods, "strategies": strategies,
+            "strategies_reported_today": sleeve_report is not None, "today_trades": trades, "scorecard": scorecard}
 
 
 def build():
@@ -109,7 +151,15 @@ def build():
         "capital": capital,
         "capital_as_of": capital_as_of,
         "regime": regime,
+        "overview": _overview_safely(),
     }
+
+
+def _overview_safely():
+    try:
+        return overview()
+    except Exception as e:                       # the overview must never stop the publishing
+        return {"error": f"{type(e).__name__}: {e}"}
 
 
 def write_file():
@@ -145,6 +195,7 @@ def push(path):
         return False, "Could not save the commit: " + (commit.stderr or commit.stdout).strip()[:300]
     sent = _git("push")
     if sent.returncode != 0:
+        _git("reset", "--mixed", "HEAD~1")       # undo the local save, so a later "git pull" never gets stuck
         return False, "Could not push to GitHub (sign-in needed?): " + (sent.stderr or sent.stdout).strip()[:300]
     return True, "Published results.json to GitHub."
 
