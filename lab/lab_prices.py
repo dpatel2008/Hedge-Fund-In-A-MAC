@@ -21,6 +21,8 @@ from lab_core import (DATA_DIR, ET, PRICE_YEARS, PriceClient, log, parse_day, re
 PRICE_DIR = os.path.join(DATA_DIR, "prices")
 DAY_DIR = os.path.join(PRICE_DIR, "daily")
 SPLITS_FILE = os.path.join(PRICE_DIR, "splits.csv")
+TYPES_FILE = os.path.join(PRICE_DIR, "ticker_types.csv")       # which symbols are common stocks, funds, ...
+TYPES_MAX_AGE_DAYS = 7
 STATE_FILE = os.path.join(PRICE_DIR, "state.json")
 BENCHMARKS = ("SPY", "IWM")
 
@@ -120,8 +122,9 @@ def download_prices(api_key, budget, status):
             break
         log(f"  The price service answered {code} for {d.isoformat()} ({message[:80]}). Skipping that day for now.")
     info["downloaded_days"] = got
-    info["calls"] = client.calls
     refresh_splits(client, status)
+    refresh_ticker_types(client, status)
+    info["calls"] = client.calls
 
 
 def refresh_splits(client, status):
@@ -159,6 +162,41 @@ def refresh_splits(client, status):
             return
     info["splits_problem"] = "Could not download the list of stock splits; the saved list (if any) is used."
     log("  " + info["splits_problem"])
+
+
+def refresh_ticker_types(client, status):
+    """The price service's list of every listed symbol and its type (CS = common stock, ETF = fund, ...), so the
+    stat-arb test only pairs real companies. Downloaded about once a week (about 12 calls)."""
+    info = status.setdefault("prices", {})
+    try:
+        age = (datetime.now().timestamp() - os.path.getmtime(TYPES_FILE)) / 86400
+    except OSError:
+        age = None
+    if age is not None and age < TYPES_MAX_AGE_DAYS:
+        return
+    rows, url, first, pages = [], "/v3/reference/tickers", True, 0
+    params = {"market": "stocks", "active": "true", "limit": 1000, "order": "asc", "sort": "ticker"}
+    while url and pages < 40:
+        code, data = client.get_json(url, params if first else None)
+        first = False
+        pages += 1
+        if code != 200 or not isinstance(data, dict):
+            info["types_problem"] = (f"Could not download the list of stock types ({code}); the stat-arb test uses "
+                                     f"the saved list, or waits for the next run.")
+            log("  " + info["types_problem"])
+            return
+        for r in data.get("results") or []:
+            if r.get("ticker"):
+                rows.append([r["ticker"], r.get("type") or ""])
+        url = data.get("next_url")
+    if url:                                     # stopped before the end of the list: keep the saved one
+        info["types_problem"] = "The list of stock types was longer than expected; the saved list (if any) is used."
+        log("  " + info["types_problem"])
+        return
+    if rows:
+        write_csv(TYPES_FILE, ["ticker", "type"], rows)
+        info["types"] = len(rows)
+        log(f"Prices: {len(rows):,} listed symbols and their types saved.")
 
 
 # ---------------------------------------------------------------- loading
