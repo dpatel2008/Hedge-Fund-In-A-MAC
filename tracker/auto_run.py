@@ -55,6 +55,7 @@ LAST_TRY = 10 * 60 + 55        # the last scheduled try; only then do we email "
 STALL_MINUTES = 20             # no progress at all for this long = stuck (the longest normal quiet spell is ~11 minutes)
 MAX_MINUTES = 150              # a run is stopped after this long no matter what
 WATCH_EVERY_SECONDS = 30
+NO_PRICE_WORDS = ("no answer from IBKR", "not answering", "IBKR was slow")   # plan skips that mean IBKR sent nothing
 PUBLISH_SECONDS = 240          # the dashboard upload may take at most this long; then the run moves on without it
 
 _beat = [time.time()]          # the last time the run showed a sign of life (printed anything)
@@ -330,7 +331,7 @@ def send_email(subject, body, attachments=None, html=None, images=None):
 
 def publish_safely():
     """Uploads results.json for the dashboard. Waits at most PUBLISH_SECONDS, so a stuck upload can never hold up the
-    end of the run (the quotes alert, the day's marker and the lock release come after it)."""
+    rest of the run (the email, the day's marker and the lock release come after it). Returns (ok, message)."""
     outcome = []
 
     def work():
@@ -344,19 +345,28 @@ def publish_safely():
     thread.start()
     thread.join(PUBLISH_SECONDS)
     if outcome:
-        log(f"Publish results: {outcome[0][1]}")
+        ok, message = outcome[0]
     else:
-        log(f"Publish results: not finished after {PUBLISH_SECONDS // 60} minutes, so the run moved on without it.")
+        ok, message = False, f"not finished after {PUBLISH_SECONDS // 60} minutes, so the run moved on without it."
+    log(f"Publish results: {message}")
+    return bool(ok), message
 
 
 def gateway_check():
     """Before trading: makes sure IBKR is really sending prices, and restarts IB Gateway once if it is not
-    (start_gateway.py). It never stops the run."""
+    (start_gateway.py). Returns True (prices arrive), False (still no prices) or None (the check could not run).
+    Never raises."""
     try:
         import start_gateway
-        start_gateway.ensure(alert=True)
+        return start_gateway.ensure(alert=True)
     except Exception as e:
         log(f"IB Gateway check skipped ({type(e).__name__}: {e})")
+        return None
+
+
+def dashboard_line():
+    url = getattr(C, "DASHBOARD_URL", "")
+    return f"Your dashboard (every trade and the money made): {url}" if url else ""
 
 
 def overview(report, body, today, mode, notices):
@@ -419,7 +429,10 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             log("Started by hand (Run Tracker icon).")
         if market_days and not market_days.calendar_is_current(today):
             log("Note: the holiday list in market_days.py has run out. Ask for an update.")
-        gateway_check()
+        if gateway_check() is False and not manual and minutes < LAST_TRY:
+            log("IBKR is not sending prices, even after restarting IB Gateway, so this try did nothing. "
+                + next_try_words(minutes))
+            return
 
     broker = IBBroker()
     try:
@@ -495,6 +508,22 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             body = problem or "The tracker part did not finish."
         end_minutes = now_minutes()
         notices = [problem] if problem else []
+        quotes_failed = 0
+        if report is not None and not plan_only:
+            plan = report["plan"]
+            quotes_failed = sum(1 for r in plan if any(w in (r.get("decision_reason") or "") for w in NO_PRICE_WORDS))
+            priced = sum(1 for r in plan if r.get("price") not in (None, ""))
+            no_quote = sum(1 for r in plan if (r.get("decision_reason") or "").startswith("no quote from IBKR"))
+            if priced == 0 and no_quote >= 5:
+                quotes_failed += no_quote        # IBKR found the stocks but sent not one price: same problem
+            traded = (any(r.get("decision") == "FILLED" for r in plan)
+                      or any(str(e).startswith("Closed") for e in report["events"]))
+            if quotes_failed >= 3 and not traded:
+                retry = True                     # IBKR sent no prices: no marker, so the next try runs it again
+                quote_problem = (f"IBKR did not answer price requests for {quotes_failed} of {len(plan)} stocks, "
+                                 "so no new trades were placed.")
+                notices.append(quote_problem)
+                body = quote_problem + "\n\n" + body
         if retry and not plan_only:
             unfinished = (f"The run did not fully finish (lost the connection or IBKR's data was not ready). "
                           f"{next_try_words(end_minutes)}")
@@ -509,7 +538,16 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             if capital:
                 body = body + "\n\n" + capital
         attachments = [p for p in (path, sleeve_path) if p]
+        if not plan_only and SC.PUBLISH_RESULTS:
+            published = publish_safely()         # before the email, so the dashboard link shows today's numbers
+            if published and not published[0]:
+                stale = ("The dashboard was NOT updated (the upload to GitHub failed: "
+                         f"{str(published[1]).strip()[:200]}). Today's email is still correct.")
+                notices.append(stale)
+                body = stale + "\n\n" + body
         page, images = overview(report, body, today, mode, notices)
+        if dashboard_line():
+            body = dashboard_line() + "\n\n" + body
         sent = send_email(subject, body, attachments, page, images)
         log(f"Finished ({mode}). Email sent: {sent}. {subject}")
 
@@ -526,18 +564,6 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
                     phone_alert.send("Tracker did NOT finish", next_try_words(end_minutes), "urgent")
             elif report is not None:
                 phone_alert.send("Tracker finished", f"{subject}; sleeves: {sleeve_trades} trade(s)")
-            if report is not None and SC.PUBLISH_RESULTS:
-                publish_safely()
-            if report is not None:
-                plan = report["plan"]
-                no_quote = sum(1 for r in plan if "no quote" in (r.get("decision_reason") or ""))
-                if plan and no_quote >= max(3, len(plan) // 2):
-                    phone_alert.send(
-                        "Tracker: quotes failed",
-                        f"{no_quote} of {len(plan)} stocks had no price from IBKR, so few or no trades "
-                        "were placed. Double-click Run Tracker on your Desktop in a few minutes.",
-                        "high",
-                    )
     finally:
         broker.disconnect()
         if not plan_only and not retry:

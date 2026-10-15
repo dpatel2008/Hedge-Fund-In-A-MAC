@@ -36,7 +36,7 @@ CASH_SYMBOLS = (SC.CASH_SYMBOL, SC.CASH_FALLBACK_SYMBOL)
 LABELS = {
     "tracker": "SEC-filing tracker", "hedge": "IWM hedge", "trend": "Trend", "sector": "Sector rotation",
     "momentum": "Momentum", "meanrev": "Mean reversion", "pairs": "Pairs", "cash": "T-bills (idle cash)",
-    "plain": "Not used by any strategy",
+    "plain": "Cash (includes money from short sales)",
 }
 
 
@@ -273,8 +273,9 @@ def capital_rows(equity, positions, ledger_positions, allocations):
         if key == "hedge" and row["gross"] == 0:
             continue
         out.append(row)
-    invested = sum(r["gross"] for r in out if r["key"] != "cash")
-    unused = equity - sum(r["gross"] for r in out)          # money no strategy (and no T-bill) is using
+    invested = sum(r["gross"] for r in out if r["key"] not in ("cash", "hedge"))   # what the total limit counts
+    # the account's cash: what is left after paying for everything bought, plus the money short sales brought in
+    unused = equity - sum(r["long"] + r["options"] for r in out) + sum(r["short"] for r in out)
     out.append({"key": "plain", "name": LABELS["plain"], "budget_pct": SC.CASH_BUFFER_PCT if SC.CASH_SLEEVE_ENABLED else None,
                 "budget": SC.CASH_BUFFER_PCT * equity if SC.CASH_SLEEVE_ENABLED else None, "long": unused,
                 "short": 0.0, "options": 0.0, "positions": 0, "pnl": 0.0, "gross": unused,
@@ -300,7 +301,7 @@ def _budget_words(r):
     if r["key"] == "cash":
         return "gets the money nobody else is using"
     if r["key"] == "hedge":
-        return "sized to offset the tracker's buys"
+        return "sized to offset the tracker's shorts (never bigger than them)"
     if r["key"] not in ("tracker",) and not r.get("budget_pct"):
         return "switched off"
     return f"budget {_pct(r['budget_pct'])} ({_money(r['budget'])})"
@@ -308,8 +309,8 @@ def _budget_words(r):
 
 def capital_text(rows, totals, state=None):
     lines = ["CAPITAL BY STRATEGY",
-             f"  Account value {_money(totals['equity'])}. Invested (long + short) {_money(totals['invested'])} = "
-             f"{_pct(totals['invested_pct'])} (limit {_pct(totals['cap_pct'])})."]
+             f"  Account value {_money(totals['equity'])}. Invested (long + short, not counting the IWM hedge) "
+             f"{_money(totals['invested'])} = {_pct(totals['invested_pct'])} (limit {_pct(totals['cap_pct'])})."]
     for r in rows:
         budget = _budget_words(r)
         detail = ""
@@ -347,7 +348,8 @@ def capital_html(rows, totals, state=None):
             f"{esc('; '.join(d['reasons']))}</li>" for n, d in state["sleeves"].items())
         off = "" if SC.SLEEVES_ENABLED else " - sleeves are switched OFF, so these are not in use yet"
         alloc = f"<h3>This month's strategy shares (decided {esc(str(state.get('date')))}){off}</h3><ul>{items}</ul>"
-    head = (f"<p>Account value {_money(totals['equity'])}. Invested (long + short) {_money(totals['invested'])} = "
+    head = (f"<p>Account value {_money(totals['equity'])}. Invested (long + short, not counting the IWM hedge) "
+            f"{_money(totals['invested'])} = "
             f"{_pct(totals['invested_pct'])} of the account (limit {_pct(totals['cap_pct'])}).</p>")
     return head + table + alloc
 

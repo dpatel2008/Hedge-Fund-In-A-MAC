@@ -13,6 +13,9 @@ SIGNALS_URL = (
 # Saved next to the tracker folder, whatever folder you run the tracker from.
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tracker_data")
 
+# The Lovable dashboard (your trades and the money made). The morning email links to it. "" leaves the link out.
+DASHBOARD_URL = "https://signal-watcher-pro.lovable.app/portfolio"
+
 # Interactive Brokers connection (paper account only).
 IB_HOST = "127.0.0.1"
 IB_PORTS = [4002, 7497]      # 4002 = IB Gateway paper, 7497 = Trader Workstation paper
@@ -22,13 +25,17 @@ IB_MARKET_DATA_TYPE = 3      # 3 = delayed (free), 1 = live (needs a subscriptio
 # Which signals to trade.
 MIN_SCORE_TO_TRADE = 35          # bearish signals (shorts)
 MIN_SCORE_TO_TRADE_LONG = 35     # bullish signals (buys)
-TRADE_LONGS = True               # insider-buying clusters and good-news 8-Ks
+TRADE_LONGS = False              # buys (insider buying, good-news 8-Ks): off since Oct 15, 2026. The Signal Lab's
+                                 # 2-year test: buys lost about 0.2% per trade after costs, shorts made about 1.8%.
+SHORT_ONLY_WITH_OTHER_SIGNALS = ("INSIDER_SELLING",)   # shorts from this alone lost money (Signal Lab), so it needs
+                                                      # another bearish signal (dilution, late filing, bad 8-K...)
+SKIP_SPAC_GOING_CONCERN = True   # going-concern warnings from SPACs (blank-check shells) lost money (Signal Lab)
 MAX_SIGNAL_AGE_DAYS = 5
-MAX_CANDIDATES_TO_ANALYZE = 25
-MAX_NEW_TRADES_PER_RUN = 5       # all new trades together
-MAX_NEW_SHORTS_PER_RUN = 3       # of those, at most this many shorts
-MAX_NEW_LONGS_PER_RUN = 2        # and at most this many longs, so longs are never crowded out
-MAX_OPEN_POSITIONS = 10
+MAX_CANDIDATES_TO_ANALYZE = 40
+MAX_NEW_TRADES_PER_RUN = 8       # all new trades together
+MAX_NEW_SHORTS_PER_RUN = 8       # of those, at most this many shorts
+MAX_NEW_LONGS_PER_RUN = 3        # and at most this many longs (only if TRADE_LONGS is True)
+MAX_OPEN_POSITIONS = 20          # room to use the tracker's whole budget (TRACKER_MAX_GROSS_PCT in sleeve_config.py)
 TRADE_13D_LONGS = False      # the SEC list can show the filer instead of the target
 
 # Liquidity filters.
@@ -54,6 +61,8 @@ HEDGE_ENABLED = True
 HEDGE_SYMBOL = "IWM"
 BENCHMARK_SYMBOL = "SPY"
 MIN_HEDGE_DOLLARS = 1000
+HEDGE_MAX_TO_NET = 1.0       # the hedge is never bigger than the tracker's net long/short dollars (1.0 = dollar for
+                             # dollar). Without it, a short-only book of jumpy small stocks could need IWM worth 2x the shorts.
 DEFAULT_BETA = 1.2
 HISTORY_DAYS = 120
 MIN_RETURNS_FOR_BETA = 20
@@ -66,7 +75,7 @@ OPTION_SPREAD_WIDTH_PCT = 0.10   # the second leg is 10% away from the stock pri
 OPTION_MAX_CANDIDATES = 10
 OPTION_RISK_PCT = 0.0025         # spend at most 0.25% of the account on each spread
 OPTION_MAX_CONTRACTS = 25
-OPTION_MAX_OPEN = 10             # most spreads open at once
+OPTION_MAX_OPEN = 20             # most spreads open at once
 OPTION_MIN_DEBIT = 0.15          # skip spreads costing under $0.15 a share
 OPTION_MIN_REWARD_RISK = 1.0     # skip unless the best case is at least as big as the cost
 OPTION_MAX_LEG_GAP_PCT = 0.5     # skip if a leg's bid/ask gap is over 50% of its price

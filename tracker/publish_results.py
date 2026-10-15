@@ -85,12 +85,22 @@ def overview(day=None):
             "strategies_reported_today": sleeve_report is not None, "today_trades": trades, "scorecard": scorecard}
 
 
+def _curve():
+    """[{date, equity, spy}] one per day. Days saved without SPY's price get SPY's close from the day before."""
+    try:
+        import email_overview as O
+        return [{"date": d.isoformat(), "equity": round(v, 2), "spy": s} for d, v, s in O.equity_points()]
+    except Exception:
+        curve = []
+        for r in _rows("equity_curve.csv"):
+            equity = _num(r.get("net_liq"))
+            if equity:
+                curve.append({"date": r["date"], "equity": round(equity, 2), "spy": _num(r.get("spy_price"))})
+        return curve
+
+
 def build():
-    curve = []
-    for r in _rows("equity_curve.csv"):
-        equity = _num(r.get("net_liq"))
-        if equity:
-            curve.append({"date": r["date"], "equity": round(equity, 2), "spy": _num(r.get("spy_price"))})
+    curve = _curve()
     account = {"equity": None, "start_equity": None, "return_pct": None, "spy_return_pct": None, "since": None}
     if curve:
         account["equity"] = curve[-1]["equity"]

@@ -30,6 +30,7 @@ CHECK_SECONDS = 20            # each question in the price check gives up after 
 CHECK_TRIES = 3               # right after a login the data connections need a moment, so the check tries again
 CHECK_PAUSE = 20
 CHECK_SYMBOL = "SPY"
+QUOTE_SECONDS = 15            # how long the check waits for a (delayed) price quote
 GATEWAY_PROCESS = "ibcalpha.ibc.IbcGateway"    # appears only in the command line of the IB Gateway that IBC runs
 STOP_SECONDS = 60
 
@@ -59,10 +60,17 @@ def stay_awake():
 
 # ------------------------------------------------------------ the price check
 
+def _positive(*values):
+    for v in values:
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and v > 0:
+            return float(v)
+    return None
+
+
 def data_check(symbol=CHECK_SYMBOL, seconds=CHECK_SECONDS):
-    """Asks IB Gateway for one stock's details and a few days of prices, the same two things the tracker needs.
-    Returns (True, detail) when both arrive, (False, what was missing) when they do not, and (None, why) when the
-    check itself could not run (then nothing should be restarted because of it). Never raises."""
+    """Asks IB Gateway for one stock's details, a few days of prices and a price quote: the three things the tracker
+    needs. Returns (True, detail) when all three arrive, (False, what was missing) when they do not, and (None, why)
+    when the check itself could not run (then nothing should be restarted because of it). Never raises."""
     try:
         from ib_async import IB, Stock
     except Exception as e:
@@ -88,7 +96,21 @@ def data_check(symbol=CHECK_SYMBOL, seconds=CHECK_SECONDS):
             bars = []
         if not bars:
             return False, f"IBKR sent no price history for {symbol}"
-        return True, f"{symbol} closed at {bars[-1].close} on {bars[-1].date}"
+        price = None
+        try:
+            ib.reqMarketDataType(C.IB_MARKET_DATA_TYPE)
+            ticker = ib.reqMktData(contract, "", False, False)
+            waited = 0.0
+            while price is None and waited < QUOTE_SECONDS:
+                ib.sleep(0.5)
+                waited += 0.5
+                price = _positive(ticker.marketPrice(), ticker.last, ticker.close, ticker.bid, ticker.ask)
+            ib.cancelMktData(contract)
+        except Exception:
+            price = None
+        if price is None:
+            return False, f"IBKR sent no price quote for {symbol}"
+        return True, f"{symbol} quote {price:g}, last close {bars[-1].close} on {bars[-1].date}"
     except Exception as e:
         return False, f"the price check failed ({type(e).__name__}: {e})"
     finally:

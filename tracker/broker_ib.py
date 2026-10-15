@@ -17,6 +17,8 @@ SYNC_SECONDS = 20          # time allowed to load the account's positions, order
 REQUEST_TIMEOUT = 90       # no single question to IBKR may wait longer than this (stops a run from hanging forever)
 HISTORY_TIMEOUT = 30       # price history for one stock: give up after this long (it normally takes 1-2 seconds)
 CONNECT_TRIES = 2
+QUICK_ANSWER_SECONDS = 15  # a stock lookup that failed faster than this was a real "no" (or several listings), not silence
+US_EXCHANGES = ("ARCA", "NYSE", "NASDAQ", "AMEX", "BATS")   # preferred listings when a symbol has more than one
 OUR_ORDER_TAGS = ("SECW-", "SLEEVE-")    # every order this project places has an order reference starting with one of these
 
 
@@ -215,12 +217,34 @@ class IBBroker:
         if symbol in self._stocks:
             return self._stocks[symbol]
         contract = Stock(_ib_symbol(symbol), "SMART", "USD")
+        started = time.time()
         try:
             self.ib.qualifyContracts(contract)
         except Exception:
             pass
+        if not contract.conId and time.time() - started < QUICK_ANSWER_SECONDS:
+            contract = self._pick_listing(symbol) or contract     # IBKR answered but found several listings
         self._stocks[symbol] = contract if contract.conId else None
         return self._stocks[symbol]
+
+    def _pick_listing(self, symbol):
+        """When a symbol matches more than one IBKR listing (some ETFs, like HYG), picks the US-listed one.
+        Returns a contract with its conId set, or None."""
+        try:
+            details = self.ib.reqContractDetails(Stock(_ib_symbol(symbol), "SMART", "USD")) or []
+        except Exception:
+            return None
+        listed = [d.contract for d in details
+                  if d.contract and d.contract.secType == "STK" and d.contract.currency == "USD" and d.contract.conId]
+        for exchange in US_EXCHANGES:
+            for c in listed:
+                if c.primaryExchange == exchange:
+                    found = Stock(c.symbol, "SMART", "USD", primaryExchange=exchange)
+                    found.conId = c.conId
+                    found.localSymbol = c.localSymbol
+                    found.tradingClass = c.tradingClass
+                    return found
+        return None
 
     def snapshot(self, symbol):
         contract = self._stock(symbol)

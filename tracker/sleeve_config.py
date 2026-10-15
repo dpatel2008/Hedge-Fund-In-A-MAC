@@ -22,11 +22,11 @@ SLEEVE_ALLOCATION = {                 # the NORMAL share; automatic shifting mov
     "momentum": 0.14,
     "meanrev": 0.08,
     "pairs": 0.10,
-}                                     # together 60% of the account
+}                                     # trend + momentum + mean reversion = 40% of the account (sector and pairs are off)
 
 # ---------------------------------------------------------------- SEC-filing tracker budget
-TRACKER_MAX_GROSS_PCT = 0.35          # the tracker's stocks + options (long + short) may use at most 35% of the account.
-                                      # 35% tracker + 60% sleeves = 95%, the total limit below.
+TRACKER_MAX_GROSS_PCT = 0.55          # the tracker's stocks + options (long + short) may use at most 55% of the account.
+                                      # (35% until Oct 15, 2026: the money that sat in T-bills moved to the tracker)
 
 # ---------------------------------------------------------------- automatic shifting of money between sleeves
 DYNAMIC_ALLOCATION = True             # False = every sleeve always gets exactly its normal share
@@ -46,11 +46,14 @@ ALLOC_MAX_MULT = 1.5                  # never more than 1.5 times the normal sha
 CASH_SLEEVE_ENABLED = True        # park unused cash in a Treasury bill ETF
 CASH_SYMBOL = "SGOV"
 CASH_FALLBACK_SYMBOL = "BIL"
-CASH_BUFFER_PCT = 0.10            # always keep this share of the account as plain cash
+CASH_BUFFER_PCT = 0.05            # always keep this share of the account as plain cash
+CASH_MIN_PCT = 0.05               # and always keep at least this share in the T-bill ETF (more when money is unused)
 CASH_REBALANCE_BAND_PCT = 0.03    # only trade the T-bill ETF when it is off target by this much of the account
 
 # ---------------------------------------------------------------- risk limits
-MAX_TOTAL_GROSS_PCT = 0.95        # tracker trades + sleeves together never exceed this share of the account
+MAX_TOTAL_GROSS_PCT = 0.95        # tracker (55%) + sleeves (40%) together never exceed this share of the account
+                                  # (long + short). The tracker's IWM hedge is not counted: it offsets the tracker's
+                                  # shorts, and HEDGE_MAX_TO_NET in config.py keeps it no bigger than they are.
 DAILY_LOSS_LIMIT_PCT = 0.02       # if the account fell this much since the last saved day, no NEW positions today
 MAX_ORDERS_PER_RUN = 40
 MIN_ORDER_DOLLARS = 500
@@ -74,7 +77,7 @@ TRACKER_GUARDS_ENABLED = True
 TRACKER_DAILY_LOSS_LIMIT = True       # no new tracker trades when the daily loss limit is hit
 TRACKER_BLOCK_LONGS_WHEN_STRESSED = True   # no new tracker BUYS when SPY is below its 50-day average and very volatile
 TRACKER_REGIME_SMA_DAYS = 50
-MAX_PER_INDUSTRY = 2                  # at most this many tracker trades in the same IBKR industry (open + new)
+MAX_PER_INDUSTRY = 3                  # at most this many tracker trades in the same IBKR industry (open + new)
 
 # ---------------------------------------------------------------- strategy settings
 TREND = {"sma_days": 200, "vol_days": 60, "band": 0.01, "max_weight": 0.35}

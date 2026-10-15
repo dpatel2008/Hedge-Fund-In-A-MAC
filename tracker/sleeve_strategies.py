@@ -36,7 +36,7 @@ MEANREV_UNIVERSE = [
 
 MOMENTUM_UNIVERSE = [
     "INTU", "NOW", "PANW", "ADI", "LRCX", "KLAC", "AMAT", "MU", "SNPS", "CDNS", "FTNT", "ANET", "ADSK",
-    "IBM", "ACN", "BRK-B", "BLK", "SCHW", "AXP", "C", "WFC", "USB", "PNC", "TFC", "CB", "PGR", "MMC",
+    "IBM", "ACN", "BRK-B", "BLK", "SCHW", "AXP", "C", "WFC", "USB", "PNC", "TFC", "CB", "PGR",
     "AON", "ICE", "CME", "AMGN", "GILD", "BMY", "ISRG", "SYK", "MDT", "ABT", "DHR", "VRTX", "REGN",
     "ZTS", "BDX", "CVS", "CI", "ELV", "HCA", "TJX", "LULU", "ORLY", "AZO", "ROST", "MAR", "HLT", "CMG",
     "YUM", "KMB", "GIS", "MDLZ", "MO", "PM", "GE", "RTX", "BA", "UNP", "ETN", "ITW", "EMR", "GD", "WM",

@@ -4,6 +4,7 @@ Pure math and trading rules. No broker, no files, no internet.
 """
 
 import math
+import re
 from datetime import datetime
 
 import numpy as np
@@ -70,7 +71,16 @@ def signal_tags(form_types, reasons):
     return tags
 
 
-def classify_signal(form_types, reasons):
+SPAC_NAME = re.compile(r"\b(?:acquisition|merger|spac|blank check)\s+(?:corp|corporation|co|company|inc|ltd|limited|"
+                       r"holdings|holding|i{1,3}|iv|v|vi{0,3})\b|\bacquisition corp", re.IGNORECASE)   # same as the Signal Lab
+
+
+def is_spac(company):
+    """True for blank-check shells (SPACs), judged by the company name the way the Signal Lab does."""
+    return bool(SPAC_NAME.search(company or ""))
+
+
+def classify_signal(form_types, reasons, company=""):
     """Returns (direction, tags, why_skipped). Direction is SHORT, LONG or SKIP."""
     tags = signal_tags(form_types, reasons)
     bearish = [t for t in tags if t in BEARISH]
@@ -80,6 +90,14 @@ def classify_signal(form_types, reasons):
     if bearish and "ACTIVIST_13D" in tags:
         return "SKIP", tags, "conflicting signals (bearish filing plus a 13D)"
     if bearish:
+        working = list(bearish)
+        if getattr(C, "SKIP_SPAC_GOING_CONCERN", False) and "GOING_CONCERN" in working and is_spac(company):
+            working.remove("GOING_CONCERN")
+            if not working:
+                return "SKIP", tags, "SPAC going-concern warning (these lost money in the Signal Lab)"
+        alone = set(getattr(C, "SHORT_ONLY_WITH_OTHER_SIGNALS", ()))
+        if alone and all(t in alone for t in working):
+            return "SKIP", tags, "insider selling alone (lost money in the Signal Lab); needs another bearish signal"
         return "SHORT", tags, ""
     if bullish:
         if C.TRADE_LONGS:
@@ -154,12 +172,16 @@ def size_position(direction, price, atr_value, equity, avg_shares=None):
     }
 
 
-def hedge_target(exposures, hedge_price):
-    """exposures: dicts with signed_notional (long +, short -) and beta."""
+def hedge_target(exposures, hedge_price, max_to_net=None):
+    """exposures: dicts with signed_notional (long +, short -) and beta. max_to_net: the hedge is never bigger than
+    this many times the net dollars (None = no limit)."""
     net = sum(e["signed_notional"] for e in exposures)
     gross = sum(abs(e["signed_notional"]) for e in exposures)
     net_beta = sum(e["signed_notional"] * e["beta"] for e in exposures)
     hedge_dollars = -net_beta
+    if max_to_net is not None:
+        limit = max_to_net * abs(net)
+        hedge_dollars = max(-limit, min(limit, hedge_dollars))
     shares = int(round(hedge_dollars / hedge_price)) if hedge_price else 0
     return {
         "net_notional": net,

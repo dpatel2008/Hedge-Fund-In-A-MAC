@@ -89,8 +89,25 @@ def _json(name, default):
     return data if isinstance(data, type(default)) else default
 
 
+def spy_closes():
+    """{day: SPY close} from the sleeves' saved prices (tracker_data/prices/SPY.csv), or {}."""
+    out = {}
+    for r in _csv(os.path.join("prices", "SPY.csv")):
+        d, c = _day(r.get("date")), _f(r.get("close"))
+        if d is not None and c and c > 0:
+            out[d] = c
+    return out
+
+
+def spy_before(day, closes):
+    """The last SPY close before `day` (what SPY stood at going into that morning's run), or None."""
+    earlier = [d for d in closes if d < day]
+    return closes[max(earlier)] if earlier else None
+
+
 def equity_points():
-    """[(day, account value, SPY price or None)] from equity_curve.csv, one per day, oldest first."""
+    """[(day, account value, SPY price or None)] from equity_curve.csv, one per day, oldest first.
+    A day saved without SPY's price (IBKR sent none) uses SPY's close from the day before, from the saved prices."""
     by_day = {}
     for r in _csv("equity_curve.csv"):
         d, v = _day(r.get("date")), _f(r.get("net_liq"))
@@ -98,6 +115,9 @@ def equity_points():
             continue
         spy = _f(r.get("spy_price"))
         by_day[d] = (v, spy if spy and spy > 0 else None)
+    if any(s is None for v, s in by_day.values()):
+        closes = spy_closes()
+        by_day = {d: (v, s if s is not None else spy_before(d, closes)) for d, (v, s) in by_day.items()}
     return [(d, v, s) for d, (v, s) in sorted(by_day.items())]
 
 
@@ -676,6 +696,18 @@ def scorecard(closed):
 
 # ---------------------------------------------------------------- the whole overview
 
+def dashboard_button(url):
+    """A button that opens the Lovable dashboard (every trade and the money made). "" when there is no link."""
+    if not url or not str(url).startswith("https://"):
+        return ""
+    link = esc(url)
+    return (f'<div style="{CARD};text-align:center">'
+            f'<a href="{link}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;'
+            'font-weight:700;font-size:15px;padding:12px 22px;border-radius:10px">Open your dashboard</a>'
+            f'<div style="{SMALL};margin-top:8px">Every trade and the money made, updated after each run.<br>'
+            f'<a href="{link}" style="color:{GRAY}">{link}</a></div></div>')
+
+
 def build(day=None, tracker_report=None, sleeve_report=None, text_body="", mode="trade", notices=None,
           account_id=""):
     """Returns (html, images). images = {content id: PNG bytes} for the chart (empty when there is no chart).
@@ -719,6 +751,7 @@ def build(day=None, tracker_report=None, sleeve_report=None, text_body="", mode=
         f'<div style="font-size:30px;font-weight:800;margin:4px 0 2px;letter-spacing:-.01em">{money(equity)}</div>'
         f'<div style="{SMALL};margin-bottom:14px">Account value{esc(as_of)}{who}{when}</div>'
         f'{period_cards(points)}</div>')
+    parts.append(dashboard_button(getattr(C, "DASHBOARD_URL", "")))
     parts.append(chart_block(points, bool(png)))
     parts.append(strategy_table(strategy_rows(tracker_report, sleeve_report, closed), sleeve_report is not None))
     parts.append(trades_table(todays_trades(day, tracker_report, closed), mode))

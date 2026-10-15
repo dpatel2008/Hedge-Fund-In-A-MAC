@@ -351,6 +351,8 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
             mismatches.append({"symbol": s, "ledger": ledger.total_qty(s), "broker": broker_qty})
             blocked.add(s)
     nonsleeve_gross = sum(abs(p["market_value"] or 0.0) for s, p in by_symbol.items() if s not in ledger_symbols)
+    hedge_gross = abs((by_symbol.get(C.HEDGE_SYMBOL) or {}).get("market_value") or 0.0) \
+        if C.HEDGE_SYMBOL not in ledger_symbols else 0.0       # the tracker's IWM hedge offsets its shorts
 
     spy = store.get("SPY")
     regime = risk.market_regime(spy["close"] if spy else None, SC.REGIME_SMA_DAYS)
@@ -445,7 +447,7 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
 
     # shrink everything if the whole account would be too invested
     scaled_gross = sum(abs(v) for values in raw_targets.values() for v in values.values())
-    available = SC.MAX_TOTAL_GROSS_PCT * equity - nonsleeve_gross - fixed_gross
+    available = SC.MAX_TOTAL_GROSS_PCT * equity - (nonsleeve_gross - hedge_gross) - fixed_gross
     factor = 1.0
     if scaled_gross > 0 and available < scaled_gross:
         factor = max(0.0, available / scaled_gross)
@@ -496,7 +498,8 @@ def plan_sleeves(adapter, store, ledger, today_iso, equity, positions, flags, al
         if cash_price:
             have = ledger.qty("cash", cash_symbol)
             other_symbol = SC.CASH_FALLBACK_SYMBOL if cash_symbol == SC.CASH_SYMBOL else SC.CASH_SYMBOL
-            target_value = max(0.0, equity * (1 - SC.CASH_BUFFER_PCT) - nonsleeve_gross - gross_after)
+            target_value = max(0.0, equity * (1 - SC.CASH_BUFFER_PCT) - nonsleeve_gross - gross_after,
+                               equity * getattr(SC, "CASH_MIN_PCT", 0.0))     # always keep a small T-bill reserve
             want = _trunc_qty(target_value, cash_price)
             diff_value = abs(want - have) * cash_price
             if diff_value < SC.CASH_REBALANCE_BAND_PCT * equity:

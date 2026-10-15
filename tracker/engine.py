@@ -26,6 +26,8 @@ SIGNAL_TRIES = 3              # download attempts for the signal list before giv
 SIGNAL_RETRY_SECONDS = 10
 STALE_SIGNAL_DAYS = 4         # warn in the email when the newest signal is older than this
 PLAN_TIME_LIMIT_SECONDS = 600 # checking signals stops after 10 minutes, so the strategy sleeves always get their turn
+NO_ANSWER_SECONDS = 45        # a price request that failed after this long means IBKR is not answering (not "no such stock")
+NO_ANSWER_LIMIT = 3           # after this many in a row, stop asking (IB Gateway needs a restart; the next try does it)
 
 
 class RetryLater(Exception):
@@ -271,6 +273,7 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
     added = 0                                         # new positions in this run (they use up open slots)
     bench_closes = None
     started = time.time()
+    unanswered = 0                                    # price requests in a row that IBKR left unanswered
 
     for sig in signals:
         score = _score(sig)
@@ -300,7 +303,7 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
             skip("signal is too old")
             continue
 
-        direction, tags, why = A.classify_signal(row["forms"], row["reasons"])
+        direction, tags, why = A.classify_signal(row["forms"], row["reasons"], row["company"])
         row["direction"] = direction
         row["tags"] = "; ".join(tags)
         if direction == "SHORT" and score < C.MIN_SCORE_TO_TRADE:
@@ -326,13 +329,23 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
         if spent > PLAN_TIME_LIMIT_SECONDS:
             skip("not checked: ran out of time this run (IBKR was slow)")
             continue
+        if unanswered >= NO_ANSWER_LIMIT:
+            skip("not checked: IBKR is not answering price requests")
+            continue
 
         analyzed += 1
         print(f"  checking {symbol} ({analyzed} of up to {C.MAX_CANDIDATES_TO_ANALYZE}, {spent:.0f}s so far)")
+        asked = time.time()
         quote = session.quote(symbol)
         if not quote or not quote.get("price"):
-            skip("no quote from IBKR (symbol not found or no data)")
+            if time.time() - asked >= NO_ANSWER_SECONDS:
+                unanswered += 1
+                skip("no answer from IBKR (gave up waiting for a price)")
+            else:
+                unanswered = 0
+                skip("no quote from IBKR (symbol not found or no data)")
             continue
+        unanswered = 0
         price = quote["price"]
         row["price"] = round(price, 4)
         if price < C.MIN_PRICE:
@@ -796,7 +809,7 @@ def rebalance_hedge(session, open_trades, today):
         price = session.price(trade["symbol"]) or trade["entry_price"]
         sign = -1 if trade["direction"] == "SHORT" else 1
         exposures.append({"symbol": trade["symbol"], "signed_notional": sign * price * trade["qty"], "beta": trade["beta"]})
-    target = A.hedge_target(exposures, hedge_price)
+    target = A.hedge_target(exposures, hedge_price, getattr(C, "HEDGE_MAX_TO_NET", None))
     held = {p["symbol"]: p for p in broker.positions() if p["sec_type"] == "STK"}
     require_connection(broker)
     current = int(held[C.HEDGE_SYMBOL]["qty"]) if C.HEDGE_SYMBOL in held else 0
