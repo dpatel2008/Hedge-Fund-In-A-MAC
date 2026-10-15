@@ -55,6 +55,7 @@ LAST_TRY = 10 * 60 + 55        # the last scheduled try; only then do we email "
 STALL_MINUTES = 20             # no progress at all for this long = stuck (the longest normal quiet spell is ~11 minutes)
 MAX_MINUTES = 150              # a run is stopped after this long no matter what
 WATCH_EVERY_SECONDS = 30
+PUBLISH_SECONDS = 240          # the dashboard upload may take at most this long; then the run moves on without it
 
 _beat = [time.time()]          # the last time the run showed a sign of life (printed anything)
 
@@ -327,6 +328,37 @@ def send_email(subject, body, attachments=None, html=None, images=None):
         return False
 
 
+def publish_safely():
+    """Uploads results.json for the dashboard. Waits at most PUBLISH_SECONDS, so a stuck upload can never hold up the
+    end of the run (the quotes alert, the day's marker and the lock release come after it)."""
+    outcome = []
+
+    def work():
+        try:
+            import publish_results
+            outcome.append(publish_results.publish())
+        except Exception:
+            outcome.append((False, "failed:\n" + traceback.format_exc()[-600:]))
+
+    thread = threading.Thread(target=work, daemon=True)
+    thread.start()
+    thread.join(PUBLISH_SECONDS)
+    if outcome:
+        log(f"Publish results: {outcome[0][1]}")
+    else:
+        log(f"Publish results: not finished after {PUBLISH_SECONDS // 60} minutes, so the run moved on without it.")
+
+
+def gateway_check():
+    """Before trading: makes sure IBKR is really sending prices, and restarts IB Gateway once if it is not
+    (start_gateway.py). It never stops the run."""
+    try:
+        import start_gateway
+        start_gateway.ensure(alert=True)
+    except Exception as e:
+        log(f"IB Gateway check skipped ({type(e).__name__}: {e})")
+
+
 def overview(report, body, today, mode, notices):
     """The portfolio overview at the top of the email: (html, images), or (None, None). Never stops the run."""
     try:
@@ -387,6 +419,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             log("Started by hand (Run Tracker icon).")
         if market_days and not market_days.calendar_is_current(today):
             log("Note: the holiday list in market_days.py has run out. Ask for an update.")
+        gateway_check()
 
     broker = IBBroker()
     try:
@@ -494,12 +527,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             elif report is not None:
                 phone_alert.send("Tracker finished", f"{subject}; sleeves: {sleeve_trades} trade(s)")
             if report is not None and SC.PUBLISH_RESULTS:
-                try:
-                    import publish_results
-                    ok, message = publish_results.publish()
-                    log(f"Publish results: {message}")
-                except Exception:
-                    log("Publish results failed:\n" + traceback.format_exc())
+                publish_safely()
             if report is not None:
                 plan = report["plan"]
                 no_quote = sum(1 for r in plan if "no quote" in (r.get("decision_reason") or ""))

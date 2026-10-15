@@ -13,6 +13,7 @@ import csv
 import json
 import math
 import os
+import signal
 import subprocess
 import sys
 from datetime import datetime
@@ -169,12 +170,29 @@ def write_file():
     return path
 
 
-def _git(*args):
+def _git(*args, timeout=60):
+    """Runs one git command and never waits longer than `timeout` seconds. If it hangs (for example on a Keychain
+    pop-up nobody answers), the command and everything it started are stopped."""
+    command = ["git", *args]
     try:
-        return subprocess.run(["git", *args], cwd=PROJECT, capture_output=True, text=True, timeout=60,
-                              env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+        proc = subprocess.Popen(command, cwd=PROJECT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                start_new_session=True, env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+    except OSError as e:
+        return subprocess.CompletedProcess(command, 1, "", f"git could not start: {e}")
+    try:
+        out, err = proc.communicate(timeout=timeout)
+        return subprocess.CompletedProcess(command, proc.returncode, out, err)
     except subprocess.TimeoutExpired:
-        return subprocess.CompletedProcess(["git", *args], 1, "", "git took too long (is a sign-in needed?)")
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)       # git and anything it started (sign-in helpers)
+        except OSError:
+            pass
+        try:
+            proc.communicate(timeout=5)
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            pass
+        return subprocess.CompletedProcess(command, 1, "", "git took too long (a sign-in or Keychain pop-up may be "
+                                                           "waiting on the Mac)")
 
 
 def push(path):

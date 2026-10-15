@@ -20,7 +20,7 @@ SETTINGS_FILES = ("config.py", "sleeve_config.py", "brain_config.py")
 EXPECTED = {
     "allocator.py": "8db85614a251c913",
     "analytics.py": "f082ccf70445705b",
-    "auto_run.py": "37322c6ba146c9c5",
+    "auto_run.py": "fa518809628b56c4",
     "backtest.py": "177b9d6ed00aeab2",
     "brain_config.py": "7f2910cb20735e74",
     "brain_test.py": "5069975f2f96a0e9",
@@ -37,7 +37,7 @@ EXPECTED = {
     "market_days.py": "6ca8d64feb82f4dd",
     "notify.py": "56b6e560faf51c3a",
     "phone_alert.py": "728231557b4749f9",
-    "publish_results.py": "f93fad146ce48959",
+    "publish_results.py": "2287687c3e6eca82",
     "resume_summary.py": "00f8343c5a91cf46",
     "risk.py": "09d4d81ed0dd3154",
     "run_brain.py": "8ee19e6be6039b21",
@@ -48,7 +48,7 @@ EXPECTED = {
     "sleeve_config.py": "96efe699cf66d3a8",
     "sleeve_engine.py": "f87d02ccfe451969",
     "sleeve_strategies.py": "9c4448dcdc2b641f",
-    "start_gateway.py": "942bab0522791115",
+    "start_gateway.py": "4bc0041f97871b4a",
 }
 
 
