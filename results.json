@@ -1,10 +1,10 @@
 {
- "updated": "2026-10-13 19:34 ET",
+ "updated": "2026-10-15 10:34 ET",
  "note": "Paper trading results. Not real money. Not investment advice.",
  "account": {
-  "equity": 1010468.28,
+  "equity": 1009448.8,
   "start_equity": 1000650.65,
-  "return_pct": 0.00981,
+  "return_pct": 0.00879,
   "spy_return_pct": 0.00148,
   "since": "2026-10-05"
  },
@@ -37,6 +37,16 @@
   {
    "date": "2026-10-12",
    "equity": 1010468.28,
+   "spy": null
+  },
+  {
+   "date": "2026-10-14",
+   "equity": 1012740.1,
+   "spy": null
+  },
+  {
+   "date": "2026-10-15",
+   "equity": 1009448.8,
    "spy": null
   }
  ],
@@ -181,16 +191,16 @@
   {
    "strategy": "SEC-filing tracker",
    "budget_pct": 0.35,
-   "using": 297289.41,
-   "using_pct": 0.2942,
-   "open_pnl": 8789.64
+   "using": 273525.36,
+   "using_pct": 0.271,
+   "open_pnl": 8007.21
   },
   {
    "strategy": "IWM hedge",
    "budget_pct": null,
-   "using": 138131.43,
-   "using_pct": 0.1367,
-   "open_pnl": 780.82
+   "using": 135621.36,
+   "using_pct": 0.1344,
+   "open_pnl": -1729.25
   },
   {
    "strategy": "Trend",
@@ -237,12 +247,12 @@
   {
    "strategy": "Not used by any strategy",
    "budget_pct": 0.1,
-   "using": 575056.26,
-   "using_pct": 0.5691,
+   "using": 600291.94,
+   "using_pct": 0.5947,
    "open_pnl": 0.0
   }
  ],
- "capital_as_of": "2026-10-12 17:43 ET",
+ "capital_as_of": "2026-10-15 10:34 ET",
  "regime": {
   "state": "normal",
   "spy": 778.57,
@@ -252,21 +262,21 @@
   "sma_days": 200
  },
  "overview": {
-  "day": "2026-10-12",
+  "day": "2026-10-15",
   "periods": [
    {
     "label": "Since the last run",
-    "since": "2026-10-09",
-    "dollars": 4338.1,
-    "pct": 0.00431,
+    "since": "2026-10-14",
+    "dollars": -3291.3,
+    "pct": -0.00325,
     "spy_pct": null,
     "spy_dollars": null
    },
    {
     "label": "Since the start",
     "since": "2026-10-05",
-    "dollars": 9817.63,
-    "pct": 0.00981,
+    "dollars": 8798.15,
+    "pct": 0.00879,
     "spy_pct": null,
     "spy_dollars": null
    }
@@ -275,26 +285,26 @@
    {
     "key": "tracker",
     "name": "SEC-filing tracker",
-    "using": 297289.41,
-    "using_pct": 0.2942,
-    "open_pnl": 8789.64,
+    "using": 273525.36,
+    "using_pct": 0.271,
+    "open_pnl": 8007.21,
     "closed_pnl": 0,
-    "total_pnl": 8789.64
+    "total_pnl": 8007.21
    },
    {
     "key": "hedge",
     "name": "IWM hedge",
-    "using": 138131.43,
-    "using_pct": 0.1367,
-    "open_pnl": 780.82,
+    "using": 135621.36,
+    "using_pct": 0.1344,
+    "open_pnl": -1729.25,
     "closed_pnl": null,
-    "total_pnl": 780.82
+    "total_pnl": -1729.25
    },
    {
     "key": "plain",
     "name": "Plain cash",
-    "using": 575056.26,
-    "using_pct": 0.5691,
+    "using": 600291.94,
+    "using_pct": 0.5947,
     "open_pnl": null,
     "closed_pnl": null,
     "total_pnl": null
