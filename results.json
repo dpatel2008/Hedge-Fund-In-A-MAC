@@ -1,11 +1,11 @@
 {
- "updated": "2026-10-15 10:34 ET",
+ "updated": "2026-10-15 12:54 ET",
  "note": "Paper trading results. Not real money. Not investment advice.",
  "account": {
-  "equity": 1009448.8,
+  "equity": 1005392.47,
   "start_equity": 1000650.65,
-  "return_pct": 0.00879,
-  "spy_return_pct": 0.00148,
+  "return_pct": 0.00474,
+  "spy_return_pct": -0.00697,
   "since": "2026-10-05"
  },
  "curve": [
@@ -32,67 +32,34 @@
   {
    "date": "2026-10-09",
    "equity": 1006130.18,
-   "spy": null
+   "spy": 773.93
   },
   {
    "date": "2026-10-12",
    "equity": 1010468.28,
-   "spy": null
+   "spy": 778.57
   },
   {
    "date": "2026-10-14",
    "equity": 1012740.1,
-   "spy": null
+   "spy": 778.01
   },
   {
    "date": "2026-10-15",
-   "equity": 1009448.8,
-   "spy": null
+   "equity": 1005392.47,
+   "spy": 769.54
   }
  ],
  "tracker": {
   "open_positions": [
    {
-    "symbol": "PENG",
-    "side": "LONG",
-    "qty": 622.0,
-    "entry_price": 71.91,
-    "price": 71.91,
-    "pnl": 0.0,
-    "pnl_pct": 0.0,
-    "exit_by": "2026-10-21",
-    "signals": "POSITIVE_8K; EVENT_8K"
-   },
-   {
-    "symbol": "CHRN",
-    "side": "SHORT",
-    "qty": 1636.0,
-    "entry_price": 19.92,
-    "price": 19.92,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
-    "exit_by": "2026-10-21",
-    "signals": "DILUTION; NEGATIVE_8K; EVENT_8K"
-   },
-   {
-    "symbol": "ARQQ",
-    "side": "SHORT",
-    "qty": 312.0,
-    "entry_price": 22.39,
-    "price": 22.39,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
-    "exit_by": "2026-10-21",
-    "signals": "INSIDER_SELLING"
-   },
-   {
     "symbol": "BCYC",
     "side": "SHORT",
     "qty": 11154.0,
     "entry_price": 3.72,
-    "price": 3.72,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
+    "price": 3.53,
+    "pnl": 2119.2600000000043,
+    "pnl_pct": 0.0510752688172044,
     "exit_by": "2026-10-21",
     "signals": "INSIDER_SELLING"
    },
@@ -101,9 +68,9 @@
     "side": "LONG",
     "qty": 1332.0,
     "entry_price": 8.85,
-    "price": 8.85,
-    "pnl": 0.0,
-    "pnl_pct": 0.0,
+    "price": 8.325,
+    "pnl": -699.3000000000005,
+    "pnl_pct": -0.059322033898305135,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_BUYING"
    },
@@ -112,9 +79,9 @@
     "side": "SHORT",
     "qty": 594.0,
     "entry_price": 74.75,
-    "price": 74.75,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
+    "price": 75.04,
+    "pnl": -172.2600000000037,
+    "pnl_pct": -0.0038795986622074414,
     "exit_by": "2026-10-22",
     "signals": "NEGATIVE_8K; EVENT_8K"
    },
@@ -123,9 +90,9 @@
     "side": "SHORT",
     "qty": 1276.0,
     "entry_price": 7.14,
-    "price": 7.14,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
+    "price": 7.16,
+    "pnl": -25.52000000000059,
+    "pnl_pct": -0.002801120448179337,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_SELLING"
    },
@@ -134,9 +101,9 @@
     "side": "SHORT",
     "qty": 6697.0,
     "entry_price": 7.46,
-    "price": 7.46,
-    "pnl": -0.0,
-    "pnl_pct": -0.0,
+    "price": 7.58,
+    "pnl": -803.6400000000007,
+    "pnl_pct": -0.016085790884718513,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_SELLING"
    },
@@ -145,32 +112,169 @@
     "side": "LONG",
     "qty": 2661.0,
     "entry_price": 18.903619,
-    "price": 18.903619,
-    "pnl": 0.0,
-    "pnl_pct": 0.0,
+    "price": 20.2,
+    "pnl": 3449.669841000001,
+    "pnl_pct": 0.06857845579727355,
     "exit_by": "2026-10-22",
     "signals": "POSITIVE_8K; EVENT_8K"
    }
   ],
-  "closed_trades": [],
-  "closed_count": 0,
-  "closed_pnl": 0,
-  "hit_rate": null
+  "closed_trades": [
+   {
+    "symbol": "PENG",
+    "side": "LONG",
+    "entry_date": "2026-10-07",
+    "exit_date": "2026-10-15",
+    "pnl": -7171.659999999996,
+    "return_pct": -0.16033931303017654,
+    "reason": "stop loss"
+   },
+   {
+    "symbol": "CHRN",
+    "side": "SHORT",
+    "entry_date": "2026-10-07",
+    "exit_date": "2026-10-15",
+    "pnl": 8310.880000000003,
+    "return_pct": 0.2550200803212852,
+    "reason": "profit target"
+   },
+   {
+    "symbol": "ARQQ",
+    "side": "SHORT",
+    "entry_date": "2026-10-07",
+    "exit_date": "2026-10-15",
+    "pnl": 2218.32,
+    "return_pct": 0.31755247878517195,
+    "reason": "profit target"
+   },
+   {
+    "symbol": "PENG long call",
+    "side": "LONG OPTION",
+    "entry_date": "2026-10-07",
+    "exit_date": "2026-10-15",
+    "pnl": -1180.0,
+    "return_pct": -0.6483516483516484,
+    "reason": "stock trade closed"
+   }
+  ],
+  "closed_count": 4,
+  "closed_pnl": 2177.54,
+  "hit_rate": 0.5
  },
  "sleeves": [
   {
    "name": "trend",
-   "value": 0.0,
+   "value": 58358.53,
    "realized": 0.0,
-   "unrealized": 0.0,
-   "positions": []
+   "unrealized": -0.11,
+   "positions": [
+    {
+     "symbol": "DBC",
+     "qty": 358,
+     "price": 33.31,
+     "value": 11924.98,
+     "pnl": 0.0
+    },
+    {
+     "symbol": "EEM",
+     "qty": 174,
+     "price": 63.68,
+     "value": 11080.32,
+     "pnl": -1.74
+    },
+    {
+     "symbol": "QQQ",
+     "qty": 18,
+     "price": 723.69,
+     "value": 13026.42,
+     "pnl": 0.18
+    },
+    {
+     "symbol": "SPY",
+     "qty": 29,
+     "price": 769.89,
+     "value": 22326.81,
+     "pnl": 1.45
+    }
+   ]
   },
   {
    "name": "momentum",
-   "value": 0.0,
+   "value": 136395.78,
    "realized": 0.0,
-   "unrealized": 0.0,
-   "positions": []
+   "unrealized": -139.64,
+   "positions": [
+    {
+     "symbol": "ADI",
+     "qty": 47,
+     "price": 399.42,
+     "value": 18772.74,
+     "pnl": -24.91
+    },
+    {
+     "symbol": "AMAT",
+     "qty": 22,
+     "price": 430.08,
+     "value": 9461.76,
+     "pnl": -8.58
+    },
+    {
+     "symbol": "FCX",
+     "qty": 201,
+     "price": 69.18,
+     "value": 13905.18,
+     "pnl": -8.04
+    },
+    {
+     "symbol": "FTNT",
+     "qty": 75,
+     "price": 181.72,
+     "value": 13629.0,
+     "pnl": -11.25
+    },
+    {
+     "symbol": "LRCX",
+     "qty": 32,
+     "price": 273.16,
+     "value": 8741.12,
+     "pnl": -9.92
+    },
+    {
+     "symbol": "MPC",
+     "qty": 34,
+     "price": 477.19,
+     "value": 16224.46,
+     "pnl": -24.82
+    },
+    {
+     "symbol": "MU",
+     "qty": 9,
+     "price": 910.1,
+     "value": 8190.9,
+     "pnl": 0.0
+    },
+    {
+     "symbol": "PANW",
+     "qty": 27,
+     "price": 371.76,
+     "value": 10037.52,
+     "pnl": -6.48
+    },
+    {
+     "symbol": "PSX",
+     "qty": 70,
+     "price": 292.02,
+     "value": 20441.4,
+     "pnl": -21.7
+    },
+    {
+     "symbol": "VLO",
+     "qty": 38,
+     "price": 447.15,
+     "value": 16991.7,
+     "pnl": -23.94
+    }
+   ]
   },
   {
    "name": "meanrev",
@@ -181,33 +285,41 @@
   },
   {
    "name": "cash",
-   "value": 0.0,
+   "value": 470047.72,
    "realized": 0.0,
-   "unrealized": 0.0,
-   "positions": []
+   "unrealized": -23.53,
+   "positions": [
+    {
+     "symbol": "SGOV",
+     "qty": 4675,
+     "price": 100.54,
+     "value": 470047.72,
+     "pnl": -23.53
+    }
+   ]
   }
  ],
  "capital": [
   {
    "strategy": "SEC-filing tracker",
-   "budget_pct": 0.35,
-   "using": 273525.36,
-   "using_pct": 0.271,
-   "open_pnl": 8007.21
+   "budget_pct": 0.55,
+   "using": 208372.32,
+   "using_pct": 0.2073,
+   "open_pnl": 3715.14
   },
   {
    "strategy": "IWM hedge",
    "budget_pct": null,
-   "using": 135621.36,
-   "using_pct": 0.1344,
-   "open_pnl": -1729.25
+   "using": 78969.25,
+   "using_pct": 0.0786,
+   "open_pnl": -898.61
   },
   {
    "strategy": "Trend",
    "budget_pct": 0.18,
-   "using": 0.0,
-   "using_pct": 0.0,
-   "open_pnl": 0.0
+   "using": 58358.53,
+   "using_pct": 0.058,
+   "open_pnl": -0.11
   },
   {
    "strategy": "Sector rotation",
@@ -219,9 +331,9 @@
   {
    "strategy": "Momentum",
    "budget_pct": 0.14,
-   "using": 0.0,
-   "using_pct": 0.0,
-   "open_pnl": 0.0
+   "using": 136395.78,
+   "using_pct": 0.1357,
+   "open_pnl": -139.64
   },
   {
    "strategy": "Mean reversion",
@@ -240,25 +352,25 @@
   {
    "strategy": "T-bills (idle cash)",
    "budget_pct": null,
-   "using": 0.0,
-   "using_pct": 0.0,
-   "open_pnl": 0.0
+   "using": 470047.72,
+   "using_pct": 0.4676,
+   "open_pnl": -23.53
   },
   {
-   "strategy": "Not used by any strategy",
-   "budget_pct": 0.1,
-   "using": 600291.94,
-   "using_pct": 0.5947,
+   "strategy": "Cash (includes money from short sales)",
+   "budget_pct": 0.05,
+   "using": 340602.81,
+   "using_pct": 0.3388,
    "open_pnl": 0.0
   }
  ],
- "capital_as_of": "2026-10-15 10:34 ET",
+ "capital_as_of": "2026-10-15 12:54 ET",
  "regime": {
   "state": "normal",
-  "spy": 778.57,
-  "sma": 722.9284,
+  "spy": 769.6,
+  "sma": 724.2136999999999,
   "above": true,
-  "vol20": 0.09952043864557364,
+  "vol20": 0.10306486311126514,
   "sma_days": 200
  },
  "overview": {
@@ -267,51 +379,286 @@
    {
     "label": "Since the last run",
     "since": "2026-10-14",
-    "dollars": -3291.3,
-    "pct": -0.00325,
-    "spy_pct": null,
-    "spy_dollars": null
+    "dollars": -7347.63,
+    "pct": -0.00726,
+    "spy_pct": -0.01089,
+    "spy_dollars": -11025.45
    },
    {
     "label": "Since the start",
     "since": "2026-10-05",
-    "dollars": 8798.15,
-    "pct": 0.00879,
-    "spy_pct": null,
-    "spy_dollars": null
+    "dollars": 4741.82,
+    "pct": 0.00474,
+    "spy_pct": -0.00697,
+    "spy_dollars": -6972.82
    }
   ],
   "strategies": [
    {
     "key": "tracker",
     "name": "SEC-filing tracker",
-    "using": 273525.36,
-    "using_pct": 0.271,
-    "open_pnl": 8007.21,
-    "closed_pnl": 0,
-    "total_pnl": 8007.21
+    "using": 208372.32,
+    "using_pct": 0.2073,
+    "open_pnl": 3715.14,
+    "closed_pnl": 2177.54,
+    "total_pnl": 5892.68
    },
    {
     "key": "hedge",
     "name": "IWM hedge",
-    "using": 135621.36,
-    "using_pct": 0.1344,
-    "open_pnl": -1729.25,
+    "using": 78969.25,
+    "using_pct": 0.0786,
+    "open_pnl": -898.61,
     "closed_pnl": null,
-    "total_pnl": -1729.25
+    "total_pnl": -898.61
+   },
+   {
+    "key": "trend",
+    "name": "Trend",
+    "using": 58358.53,
+    "using_pct": 0.058,
+    "open_pnl": -0.11,
+    "closed_pnl": 0.0,
+    "total_pnl": -0.11
+   },
+   {
+    "key": "momentum",
+    "name": "Momentum",
+    "using": 136395.78,
+    "using_pct": 0.1357,
+    "open_pnl": -139.64,
+    "closed_pnl": 0.0,
+    "total_pnl": -139.64
+   },
+   {
+    "key": "cash",
+    "name": "T-bills (SGOV)",
+    "using": 470047.72,
+    "using_pct": 0.4676,
+    "open_pnl": -23.53,
+    "closed_pnl": 0.0,
+    "total_pnl": -23.53
    },
    {
     "key": "plain",
-    "name": "Plain cash",
-    "using": 600291.94,
-    "using_pct": 0.5947,
+    "name": "Cash (incl. short sales)",
+    "using": 340602.81,
+    "using_pct": 0.3388,
     "open_pnl": null,
     "closed_pnl": null,
     "total_pnl": null
    }
   ],
   "strategies_reported_today": true,
-  "today_trades": [],
-  "scorecard": []
+  "today_trades": [
+   {
+    "strategy": "tracker",
+    "strategy_name": "SEC-filing tracker",
+    "action": "Sell",
+    "symbol": "PENG",
+    "shares": 622.0,
+    "price": 60.38,
+    "pnl": -7171.66,
+    "note": "stop loss"
+   },
+   {
+    "strategy": "tracker",
+    "strategy_name": "SEC-filing tracker",
+    "action": "Cover",
+    "symbol": "CHRN",
+    "shares": 1636.0,
+    "price": 14.84,
+    "pnl": 8310.88,
+    "note": "profit target"
+   },
+   {
+    "strategy": "tracker",
+    "strategy_name": "SEC-filing tracker",
+    "action": "Cover",
+    "symbol": "ARQQ",
+    "shares": 312.0,
+    "price": 15.28,
+    "pnl": 2218.32,
+    "note": "profit target"
+   },
+   {
+    "strategy": "tracker",
+    "strategy_name": "SEC-filing tracker",
+    "action": "Sell",
+    "symbol": "PENG long call",
+    "shares": 2.0,
+    "price": 3.2,
+    "pnl": -1180.0,
+    "note": "stock trade closed"
+   },
+   {
+    "strategy": "trend",
+    "strategy_name": "Trend",
+    "action": "Buy",
+    "symbol": "SPY",
+    "shares": 29.0,
+    "price": 769.84,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "trend",
+    "strategy_name": "Trend",
+    "action": "Buy",
+    "symbol": "QQQ",
+    "shares": 18.0,
+    "price": 723.68,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "trend",
+    "strategy_name": "Trend",
+    "action": "Buy",
+    "symbol": "DBC",
+    "shares": 358.0,
+    "price": 33.31,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "trend",
+    "strategy_name": "Trend",
+    "action": "Buy",
+    "symbol": "EEM",
+    "shares": 174.0,
+    "price": 63.69,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "PSX",
+    "shares": 70.0,
+    "price": 292.33,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "ADI",
+    "shares": 47.0,
+    "price": 399.95,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "VLO",
+    "shares": 38.0,
+    "price": 447.78,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "MPC",
+    "shares": 34.0,
+    "price": 477.92,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "FCX",
+    "shares": 201.0,
+    "price": 69.22,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "FTNT",
+    "shares": 75.0,
+    "price": 181.87,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "PANW",
+    "shares": 27.0,
+    "price": 372.0,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "AMAT",
+    "shares": 22.0,
+    "price": 430.47,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "LRCX",
+    "shares": 32.0,
+    "price": 273.47,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "momentum",
+    "strategy_name": "Momentum",
+    "action": "Buy",
+    "symbol": "MU",
+    "shares": 9.0,
+    "price": 910.1,
+    "pnl": null,
+    "note": ""
+   },
+   {
+    "strategy": "cash",
+    "strategy_name": "T-bills (SGOV)",
+    "action": "Buy",
+    "symbol": "SGOV",
+    "shares": 4675.0,
+    "price": 100.55,
+    "pnl": null,
+    "note": ""
+   }
+  ],
+  "scorecard": [
+   {
+    "group": "Tracker stocks",
+    "trades": 3,
+    "win_rate": 0.6667,
+    "total_pnl": 3357.54,
+    "avg_win": 5264.6,
+    "avg_loss": -7171.66
+   },
+   {
+    "group": "Tracker options",
+    "trades": 1,
+    "win_rate": 0.0,
+    "total_pnl": -1180.0,
+    "avg_win": null,
+    "avg_loss": -1180.0
+   }
+  ]
  }
 }
