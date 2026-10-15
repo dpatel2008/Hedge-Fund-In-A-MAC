@@ -1,0 +1,40 @@
+name: Did the tracker run
+
+# A watchdog outside the Mac: on market days it checks that the Mac uploaded today's results.json,
+# and emails you if it did not (Mac asleep or off, IB Gateway down, or the upload failed).
+on:
+  schedule:
+    - cron: '15 17 * * 1-5'     # 1:15 PM New York time in summer, 12:15 PM in winter
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Look for today's results
+        id: look
+        continue-on-error: true
+        run: python tracker/did_it_run.py
+
+      - name: Email me if the tracker did not report
+        if: steps.look.outcome == 'failure'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "Tracker did NOT report today"
+          to: ${{ secrets.EMAIL_TO }}
+          from: Tracker watchdog
+          body: file://tracker_alert.txt

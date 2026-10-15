@@ -31,7 +31,7 @@ import config as C  # noqa: E402
 CHART_ID = "overview-chart@tracker"
 NAMES = {"tracker": "SEC-filing tracker", "hedge": "IWM hedge", "trend": "Trend", "sector": "Sector rotation",
          "momentum": "Momentum", "meanrev": "Mean reversion", "pairs": "Pairs", "cash": "T-bills (SGOV)",
-         "plain": "Plain cash"}
+         "plain": "Cash (incl. short sales)"}
 SHORT_NAMES = {"tracker": "Tracker", "hedge": "Hedge", "trend": "Trend", "sector": "Sector", "momentum": "Momentum",
                "meanrev": "Mean rev.", "pairs": "Pairs", "cash": "T-bills"}
 ORDER = ["tracker", "hedge", "trend", "sector", "momentum", "meanrev", "pairs", "cash", "plain"]
