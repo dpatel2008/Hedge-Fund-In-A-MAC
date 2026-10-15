@@ -1,0 +1,52 @@
+name: Signal Lab experiments
+
+# Tests changes to the tracker's rules on the Signal Lab's saved data (run by hand). Writes
+# lab/results/experiments.json and experiments.csv. Never places orders.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: signal-lab
+  cancel-in-progress: false
+
+jobs:
+  experiments:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests numpy
+
+      - name: Get the lab's saved data
+        uses: actions/cache/restore@v4
+        with:
+          path: lab_data
+          key: lab-data-experiments-${{ github.run_id }}
+          restore-keys: |
+            lab-data-
+
+      - name: Run the experiments
+        run: python lab/experiments.py
+
+      - name: Save the results to the repo
+        run: |
+          git config user.name "signal-lab-bot"
+          git config user.email "signal-lab-bot@users.noreply.github.com"
+          git add lab/results/experiments.json lab/results/experiments.csv
+          git commit -m "Signal Lab experiments" || exit 0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              exit 0
+            fi
+            echo "Push did not work, trying again in 15 seconds..."
+            sleep 15
+          done
+          exit 1
