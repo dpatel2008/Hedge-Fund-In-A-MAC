@@ -115,7 +115,7 @@ def run(M, ready, v):
             fill = px * (1 + t["cost"])                    # buying the shares back
             pnl = (t["entry"] - fill) * t["qty"]
             realized += pnl
-            closed.append({"ret": t["entry"] / fill - 1 if fill > 0 else 0.0, "pnl": pnl, "reason": reason,
+            closed.append({"ret": 1 - fill / t["entry"] if t["entry"] > 0 else 0.0, "pnl": pnl, "reason": reason,
                            "days": i - t["i"]})
         open_t = still
         held = {t["sym"] for t in open_t}
@@ -225,6 +225,18 @@ def variants():
     return out
 
 
+def more_money():
+    """Today's exits with a bigger budget and more positions: what more money in the tracker would do (and risk)."""
+    out = []
+    for budget in (0.55, 0.70, 0.85):
+        for book_name, positions, max_pos, risk in (("20 x 5%", 20, 0.05, 0.005), ("30 x 5%", 30, 0.05, 0.005)):
+            for per_day in (8, 12):
+                v = dict(BASE, budget=budget, positions=positions, max_pos=max_pos, risk=risk, new_per_day=per_day)
+                v["name"] = f"budget {budget:.0%}, {book_name}, {per_day} new a day"
+                out.append(v)
+    return out
+
+
 def checks(best):
     """The same settings with a stricter volume floor (a stand-in for easy-to-borrow) and other hedges."""
     out = []
@@ -257,7 +269,14 @@ def main():
             results.append(r)
             log(f"  {r['name']}: {r['yearly'] * 100:.1f}% a year, Sharpe {r['sharpe']:.2f}, worst drop "
                 f"{r['max_drawdown'] * 100:.1f}%, {r['trades']} trades, average {r['avg_gross'] * 100:.0f}% used")
-    best = sorted(results[1:], key=rank_key, reverse=True)[:TOP_FOR_CHECKS]
+    grid = list(results[1:])
+    for v in more_money():
+        r = run(M, ready, v)
+        if r:
+            results.append(r)
+            log(f"  {r['name']}: {r['yearly'] * 100:.1f}% a year, Sharpe {r['sharpe']:.2f}, worst drop "
+                f"{r['max_drawdown'] * 100:.1f}%")
+    best = sorted(grid, key=rank_key, reverse=True)[:TOP_FOR_CHECKS]
     for v in checks(best):
         r = run(M, ready, v)
         if r:
