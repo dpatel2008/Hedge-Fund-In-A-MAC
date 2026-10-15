@@ -54,7 +54,10 @@ DEFAULT_ATR_PCT = 0.05       # used only when price history is missing
 
 # Shorting.
 ALLOW_UNKNOWN_SHORTABLE = True
-MIN_SHORTABLE_LEVEL = 1.5    # IBKR: above 2.5 easy, 1.5 to 2.5 maybe, below 1.5 not available
+MIN_SHORTABLE_LEVEL = 2.5    # IBKR: above 2.5 easy to borrow, 1.5 to 2.5 only if shares can be found, below 1.5 not
+                             # available. 2.5 = easy-to-borrow only (Oct 15, 2026: "maybe" names were held, then cancelled)
+SHORT_ORDER_WAIT_SECONDS = 120   # a new short may wait this long for its fill (IBKR can hold it while it finds shares)
+SKIP_EXCHANGES = ("PINK", "OTC", "OTCBB", "OTCQB", "OTCQX", "GREY", "EXPM")   # over-the-counter listings: not traded
 
 # Hedge and benchmark.
 HEDGE_ENABLED = True

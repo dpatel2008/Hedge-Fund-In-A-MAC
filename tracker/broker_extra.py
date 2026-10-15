@@ -37,7 +37,8 @@ def sector(broker, symbol):
         if contract is not None:
             details = broker.ib.reqContractDetails(contract)
             if details:
-                value = (details[0].industry or details[0].category or None)
+                value = (details[0].category or details[0].industry or None)     # "Biotechnology", not the broad
+                                                                                   # "Consumer, Non-cyclical"
     except Exception:
         value = None
     cache[symbol] = value

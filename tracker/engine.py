@@ -351,6 +351,10 @@ def build_plan(session, signals, equity, open_symbols, today, open_spread_count=
         if price < C.MIN_PRICE:
             skip(f"price under ${C.MIN_PRICE:g}")
             continue
+        exchange = str(quote.get("exchange") or "").upper()
+        if exchange in getattr(C, "SKIP_EXCHANGES", ()):
+            skip(f"over-the-counter stock ({exchange}): IBKR rarely has shares to lend")
+            continue
 
         flags = []
         bars = session.bars(symbol)
@@ -510,14 +514,17 @@ def execute_plan(broker, plan, open_trades, open_options, today, events):
                         "row": {k: row.get(k) for k in ("symbol", "company", "direction", "tags", "score", "forms",
                                                         "stop_dist", "target_dist", "exit_by", "beta", "price")}}
         save_pending(pending)                     # written down BEFORE the order, in case the run stops part way
-        result = broker.place_market(row["symbol"], action, int(row["qty"]), ref)
+        wait = getattr(C, "SHORT_ORDER_WAIT_SECONDS", None) if row["direction"] == "SHORT" else None
+        result = (broker.place_market(row["symbol"], action, int(row["qty"]), ref, wait_seconds=wait) if wait
+                  else broker.place_market(row["symbol"], action, int(row["qty"]), ref))
         filled = int(result.get("filled") or 0)
         if filled < 1:
             pending.pop(ref, None)
             save_pending(pending)
+            why = f": {result['why']}" if result.get("why") else ""
             row["decision"] = "NOT FILLED"
-            row["decision_reason"] = f"order ended as {result.get('status')}"
-            events.append(f"{row['symbol']}: {action} order was not filled ({result.get('status')})")
+            row["decision_reason"] = f"order ended as {result.get('status')}{why}"
+            events.append(f"{row['symbol']}: {action} order was not filled ({result.get('status')}{why})")
             continue
         fill = result.get("avg_fill_price") or row["price"]
         open_trades.append(new_trade(row, today, filled, fill))

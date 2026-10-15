@@ -36,6 +36,21 @@ def _positive(*values):
     return None
 
 
+def _why(trade, prefix=""):
+    """IBKR's last message about an order (for example "Order held while securities are located."), or ""."""
+    try:
+        for entry in reversed(trade.log or []):
+            message = str(getattr(entry, "message", "") or "").strip()
+            if message:
+                for start in ("Warning ", "Error "):            # "Warning 404, reqId 214: Order held while..."
+                    if message.startswith(start) and ": " in message:
+                        message = message.split(": ", 1)[1]
+                return prefix + message[:160]
+    except Exception:
+        pass
+    return ""
+
+
 def _ib_symbol(symbol):
     return symbol.replace("-", " ").replace(".", " ")
 
@@ -259,6 +274,7 @@ class IBBroker:
         return {
             "symbol": symbol,
             "price": price,
+            "exchange": str(getattr(contract, "primaryExchange", "") or ""),
             "bid": _num(ticker.bid),
             "ask": _num(ticker.ask),
             "volume": _num(ticker.volume),
@@ -428,11 +444,14 @@ class IBBroker:
 
     # ------------------------------------------------------------ orders
 
-    def _wait_for(self, trade, order):
+    def _wait_for(self, trade, order, wait_seconds=None):
+        limit = wait_seconds or C.ORDER_WAIT_SECONDS
         waited = 0
-        while not trade.isDone() and waited < C.ORDER_WAIT_SECONDS:
+        while not trade.isDone() and waited < limit:
             self.ib.sleep(1)
             waited += 1
+            if waited % 30 == 0 and waited < limit:          # a sign of life for the 20-minute safety stop
+                print(f"    still waiting for IBKR to fill it ({waited}s){_why(trade, ' - ')}")
         if not trade.isDone():
             self.ib.cancelOrder(order)
             self.ib.sleep(2)
@@ -441,9 +460,12 @@ class IBBroker:
             "status": status.status,
             "filled": int(status.filled),
             "avg_fill_price": _positive(status.avgFillPrice),
+            "why": _why(trade),
         }
 
-    def place_market(self, symbol, action, qty, ref):
+    def place_market(self, symbol, action, qty, ref, wait_seconds=None):
+        """wait_seconds: how long to wait for the fill before cancelling (default ORDER_WAIT_SECONDS). New shorts wait
+        longer: IBKR may hold them a minute or two while it finds shares to borrow."""
         contract = self._stock(symbol)
         if contract is None:
             return {"status": "no contract", "filled": 0, "avg_fill_price": None}
@@ -451,7 +473,7 @@ class IBBroker:
         order.orderRef = ref
         order.tif = "DAY"
         trade = self.ib.placeOrder(contract, order)
-        return self._wait_for(trade, order)
+        return self._wait_for(trade, order, wait_seconds)
 
     def place_spread(self, opt, action, qty, limit, ref):
         """BUY opens the spread (buy the near leg, sell the far leg). SELL closes it.
