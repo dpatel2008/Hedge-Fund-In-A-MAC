@@ -190,7 +190,7 @@ def signal_tags(sig):
     import analytics as A
     forms = "; ".join(sig["forms"])
     reasons = " | ".join(sig["reasons"])
-    direction, tags, _ = A.classify_signal(forms, reasons)
+    direction, tags, _ = A.classify_signal(forms, reasons, sig.get("company", ""))
     return direction, tags
 
 

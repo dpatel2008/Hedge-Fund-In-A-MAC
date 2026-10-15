@@ -284,7 +284,7 @@ def prepare_signals(M, tickers, signals):
     for s in signals:
         if "e" not in s:
             continue
-        direction, tags, _ = A.classify_signal("; ".join(s["forms"]), " | ".join(s["reasons"]))
+        direction, tags, _ = A.classify_signal("; ".join(s["forms"]), " | ".join(s["reasons"]), s.get("company", ""))
         s["direction"], s["tags"] = direction, tags
         ready.append(s)
     return ready
