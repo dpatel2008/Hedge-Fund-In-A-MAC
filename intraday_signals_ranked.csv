@@ -1,0 +1,62 @@
+company,ticker,cik,score,form_types,reasons,date_filed,num_filings,sample_filing_url
+CUMULUS MEDIA INC,CMLS,0001058623,55,4; 8-K,"8-K filed (+10) | Negative 8-K news: bankruptcy, executive departure (+45)",20261016,10,https://www.sec.gov/Archives/edgar/data/1204334/0001104659-26-116488.txt
+"SANGAMO THERAPEUTICS, INC",SGMOQ,0001001233,50,8-K,8-K filed (+10) | Negative 8-K news: bankruptcy (+40),20261016,1,https://www.sec.gov/Archives/edgar/data/1001233/0001193125-26-423054.txt
+Ferguson Enterprises Inc. /DE/,FERG,0002011641,40,4,6 insiders sold stock (+40),20261016,9,https://www.sec.gov/Archives/edgar/data/2011641/0001984098-26-000003.txt
+"Private Bancorp of America, Inc.",PBAM,0001705284,35,8-K,8-K filed (+10) | Positive 8-K news: share buyback (+25),20261016,1,https://www.sec.gov/Archives/edgar/data/1705284/0001705284-26-000010.txt
+TRUIST FINANCIAL CORP,TFC,0000092230,35,8-K,8-K filed (+10) | Positive 8-K news: dividend (+25),20261016,2,https://www.sec.gov/Archives/edgar/data/92230/0001193125-26-423384.txt
+"Leopard Energy, Inc.",LEEN,0001230524,35,10-K,Going concern language in filing (+35),20261016,1,https://www.sec.gov/Archives/edgar/data/1230524/0001477932-26-006284.txt
+"Awaysis Capital, Inc.",AWCA,0001021917,35,10-K,Going concern language in filing (+35),20261016,1,https://www.sec.gov/Archives/edgar/data/1021917/0001493152-26-047301.txt
+ClimateRock,CLRCF,0001903392,35,10-K,Going concern language in filing (+35),20261016,1,https://www.sec.gov/Archives/edgar/data/1903392/0001213900-26-109923.txt
+"Loop Industries, Inc.",LOOP,0001504678,35,10-Q,Going concern language in filing (+35),20261016,1,https://www.sec.gov/Archives/edgar/data/1504678/0001437749-26-032746.txt
+UNION PACIFIC CORP,UNP,0000100885,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/100885/0000100885-26-000305.txt
+Emergent BioSolutions Inc.,EBS,0001367644,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/1367644/0001367644-26-000098.txt
+IRONWOOD PHARMACEUTICALS INC,IRWD,0001446847,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/1446847/0001104659-26-116423.txt
+MYX Inc.,,0002087656,30,NT 10-Q,NT 10-Q filed (+30),20261016,1,https://www.sec.gov/Archives/edgar/data/2087656/0001683168-26-007917.txt
+Hestia Insight Inc.,HSTA,0001813603,30,NT 10-Q,NT 10-Q filed (+30),20261016,1,https://www.sec.gov/Archives/edgar/data/1813603/0001683168-26-007912.txt
+ESPEY MFG & ELECTRONICS CORP,ESP,0000033533,25,8-K,8-K filed (+10) | Negative 8-K news: auditor change (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/33533/0002077096-26-000284.txt
+iPower Inc.,IPW,0001830072,15,S-1,S-1 filed (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/1830072/0001683168-26-007908.txt
+NOCOPI TECHNOLOGIES INC/MD/,NNUP,0000888981,15,S-1,S-1 filed (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/888981/0001079973-26-001368.txt
+"TEN Holdings, Inc.",XHLD,0002030954,15,S-3,S-3 filed (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/2030954/0001493152-26-047344.txt
+"International Seaways, Inc.",INSW,0001679049,10,4; 8-K,8-K filed (+10),20261016,2,https://www.sec.gov/Archives/edgar/data/1731638/0000919574-26-007000.txt
+KOSS CORP,KOSS,0000056701,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/56701/0000056701-26-000041.txt
+COPART INC,CPRT,0000900075,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/900075/0001193125-26-423478.txt
+"Capitol Federal Financial, Inc.",CFFN,0001490906,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1490906/0001490906-26-000034.txt
+"ETOILES CAPITAL GROUP CO., LTD",EFTY,0002058349,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2058349/0001213900-26-110060.txt
+Coronado Global Resources Inc.,CODQL,0001770561,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1770561/0001104659-26-116465.txt
+"Moleculin Biotech, Inc.",MBRX,0001659617,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1659617/0001437749-26-032762.txt
+Sanara MedTech Inc.,SMTI,0000714256,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/714256/0001213900-26-110053.txt
+"OSR Health, Inc.",OSRH,0001840425,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1840425/0001213900-26-110051.txt
+"MIMEDX GROUP, INC.",MDXG,0001376339,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1376339/0001213900-26-110041.txt
+New Mountain Net Lease Trust,,0002033695,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2033695/0001193125-26-423434.txt
+"Erasca, Inc.",ERAS,0001761918,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1761918/0001193125-26-423433.txt
+Change Agents Corporation.,CHGA,0001630212,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1630212/0001213900-26-110039.txt
+QNB CORP.,QNBC,0000750558,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/750558/0001193125-26-423431.txt
+"AUTONATION, INC.",AN,0000350698,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/350698/0001628280-26-066051.txt
+Ladder Capital Corp,LADR,0001577670,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1577670/0001577670-26-000050.txt
+"MiniMed Group, Inc.",MMED,0002062583,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2062583/0001104659-26-116441.txt
+Blink Charging Co.,BLNK,0001429764,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1429764/0001493152-26-047342.txt
+ODYSSEY MARINE EXPLORATION INC,OMEX,0000798528,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/798528/0001193125-26-423422.txt
+SMITHFIELD FOODS INC,SFD,0000091388,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/91388/0000091388-26-000060.txt
+TOP Financial Group Ltd,TOP,0001848275,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1848275/0001213900-26-110029.txt
+ExxonMobil Holdings Corp,XOM,0002115436,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2115436/0002115436-26-000013.txt
+"Strive, Inc.",ASST,0001920406,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1920406/0000950103-26-015690.txt
+Strategy Inc,MSTR,0001050446,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1050446/0001193125-26-423400.txt
+Ellington Credit Co,EARN,0001560672,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1560672/0001628280-26-066048.txt
+"Cycurion, Inc.",CYCU,0001868419,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1868419/0001868419-26-000054.txt
+"FRACTYL HEALTH, INC.",GUTS,0001572616,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1572616/0001193125-26-423377.txt
+"RYTHM, Inc.",RYM,0001800637,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1800637/0001213900-26-110006.txt
+REGENXBIO Inc.,RGNX,0001590877,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1590877/0001193125-26-423376.txt
+NISOURCE INC.,NI,0001111711,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1111711/0001193125-26-423375.txt
+"TRAVELERS COMPANIES, INC.",TRV,0000086312,10,10-Q; 8-K,8-K filed (+10),20261016,2,https://www.sec.gov/Archives/edgar/data/86312/0000086312-26-000180.txt
+CITIZENS FINANCIAL GROUP INC/RI,CFG,0000759944,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/759944/0000759944-26-000206.txt
+NEWS CORP,NWS,0001564708,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1564708/0001564708-26-000230.txt
+Fermi Inc.,FRMI,0002071778,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2071778/0001213900-26-109980.txt
+Oaktree Acquisition Corp. III Life Sciences,OACC,0002029769,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2029769/0001193125-26-423329.txt
+M&T BANK CORP,MTB,0000036270,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/36270/0000036270-26-000057.txt
+REGIONS FINANCIAL CORP,RF,0001281761,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1281761/0001281761-26-000063.txt
+Brand Engagement Network Inc.,BNAI,0001838163,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1838163/0001493152-26-047314.txt
+Firy Inc.,FIRY,0001801661,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1801661/0001801661-26-000120.txt
+Skydance Corp,SKYD,0002041610,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/2041610/0001104659-26-116333.txt
+Northann Corp.,NCL,0001923780,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1923780/0001575872-26-000707.txt
+"Select Water Solutions, Inc.",WTTR,0001693256,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/1693256/0001104659-26-116323.txt
+PORTLAND GENERAL ELECTRIC CO /OR/,POR,0000784977,10,8-K,8-K filed (+10),20261016,1,https://www.sec.gov/Archives/edgar/data/784977/0001193125-26-423088.txt
