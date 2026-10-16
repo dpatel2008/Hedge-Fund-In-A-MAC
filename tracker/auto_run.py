@@ -8,9 +8,12 @@ Test it any time, with no orders placed:   python tracker/auto_run.py --plan-onl
 Run today's run by hand (the Run Tracker icon does this):   python tracker/auto_run.py --manual
 
 Safety rules:
-  * It runs once a day. A finished run leaves a marker file, so later tries that day do nothing.
+  * The main run happens once a day. A finished run leaves a marker file.
   * If the connection to IB Gateway is lost, or IBKR's data has not loaded, NO marker is left, so the next
-    scheduled try (10:15 or 10:55) runs it again. A second try never doubles the day's new trades.
+    scheduled try runs it again. A second try never doubles the day's new trades.
+  * Afternoon top-ups: once the main run is done, the later tries (12:30 and 3:00 PM) only add new tracker trades
+    in slots that are still free, using today's daily signals plus filings made today. They never pass the day's
+    trade limit, never run the strategy sleeves, and never check exits (the morning run does that).
   * If a run makes no progress for 20 minutes (or runs for 2.5 hours), it is stopped, you get a phone alert,
     and the next scheduled try runs it again.
 """
@@ -51,7 +54,9 @@ except ImportError:
 
 WINDOW_START = 9 * 60 + 35     # 9:35 AM Eastern
 STOP_BEFORE_CLOSE = 15         # no new run in the last 15 minutes before the close (3:45 PM on a normal day)
-LAST_TRY = 10 * 60 + 55        # the last scheduled try; only then do we email "could not run"
+SCHEDULE_FILE = os.path.expanduser("~/Library/LaunchAgents/com.dillen.sectracker.plist")   # install_schedule.py
+DEFAULT_TRIES = (9 * 60 + 40, 10 * 60 + 15, 10 * 60 + 55)
+TOPUP_FROM = 12 * 60           # scheduled tries from noon on are afternoon top-ups once the main run is done
 STALL_MINUTES = 20             # no progress at all for this long = stuck (the longest normal quiet spell is ~11 minutes)
 MAX_MINUTES = 150              # a run is stopped after this long no matter what
 WATCH_EVERY_SECONDS = 30
@@ -59,6 +64,22 @@ NO_PRICE_WORDS = ("no answer from IBKR", "not answering", "IBKR was slow")   # p
 PUBLISH_SECONDS = 240          # the dashboard upload may take at most this long; then the run moves on without it
 
 _beat = [time.time()]          # the last time the run showed a sign of life (printed anything)
+
+
+def scheduled_tries(path=None):
+    """The times (minutes after midnight, Eastern) that the Mac's schedule starts this file on weekdays, read from
+    the schedule file install_schedule.py writes. Falls back to 9:40, 10:15 and 10:55."""
+    try:
+        import plistlib
+        with open(path or SCHEDULE_FILE, "rb") as f:
+            times = plistlib.load(f).get("StartCalendarInterval", [])
+        found = sorted({int(t["Hour"]) * 60 + int(t.get("Minute", 0)) for t in times})
+        return tuple(found) or DEFAULT_TRIES
+    except Exception:
+        return DEFAULT_TRIES
+
+
+TRIES = scheduled_tries()
 
 
 def beat():
@@ -119,9 +140,20 @@ def now_minutes():
     return now.hour * 60 + now.minute
 
 
+def tries_left(minutes, today=None):
+    """The scheduled tries still to come today, inside today's trading window (a half day closes at 1 PM)."""
+    try:
+        today = today or datetime.now(engine.ET).date()
+        close = market_days.close_minutes(today) if market_days else 16 * 60
+    except Exception:
+        close = 16 * 60
+    return [t for t in TRIES if minutes < t <= close - STOP_BEFORE_CLOSE]
+
+
 def next_try_words(minutes):
-    if minutes < LAST_TRY:
-        return "The next scheduled try (10:15 or 10:55) runs it again by itself."
+    later = tries_left(minutes)
+    if later:
+        return f"The next scheduled try ({clock_words(later[0])}) runs it again by itself."
     return "There are no more scheduled tries today. Double-click Run Tracker on your Desktop to run it by hand."
 
 
@@ -409,6 +441,9 @@ def _main():
             log(f"Outside the 9:35 AM to {clock_words(close - STOP_BEFORE_CLOSE)} Eastern window, nothing to do.")
             return
         if os.path.exists(marker):
+            if getattr(C, "TOPUPS_ENABLED", False) and (manual or minutes >= TOPUP_FROM):
+                topup(today, minutes, manual)
+                return
             log("Already ran today, nothing to do." + (" (Today's email has the results.)" if manual else ""))
             return
     lock = take_lock()
@@ -421,6 +456,89 @@ def _main():
         release_lock(lock)
 
 
+def topup(today, minutes, manual=False):
+    """An afternoon top-up, once the day's main run is done: new tracker trades only, in slots that are still free.
+    Runs at most once per clock hour (a marker file per hour)."""
+    label = f"{minutes // 60:02d}"
+    marker = engine.data_path(f"auto_topup_{today.isoformat()}_{label}.txt")
+    if os.path.exists(marker):
+        log("This hour's top-up already ran, nothing to do.")
+        return
+    lock = take_lock()
+    if lock is None:
+        log("Another run is going right now, so this top-up did nothing.")
+        return
+    try:
+        _topup_locked(today, minutes, manual, label, marker)
+    finally:
+        release_lock(lock)
+
+
+def _topup_locked(today, minutes, manual, label, marker):
+    stay_awake()
+    start_watchdog()
+    log(f"Top-up at {clock_words(minutes)}" + (" (started by hand)" if manual else "")
+        + ": looking for new trades in free slots.")
+    if gateway_check() is False:
+        log("Top-up skipped: IBKR is not sending prices, even after restarting IB Gateway.")
+        return
+    broker = IBBroker()
+    try:
+        broker.connect()
+    except (SystemExit, Exception) as e:
+        log(f"Top-up skipped: IB Gateway is not running, not logged in, or not answering. {e}")
+        return
+
+    done = True
+    try:
+        report, path, problem = None, None, ""
+        try:
+            report, path = engine.run("trade", broker, topup=label)
+        except engine.RetryLater as e:
+            done, problem = False, f"The top-up waited: {e}"
+        except SystemExit as e:
+            problem = f"The top-up stopped: {e}"
+        except Exception:
+            details = traceback.format_exc()
+            log("TOP-UP ERROR:\n" + details)
+            problem = ("The afternoon top-up hit an error. Some orders may have been placed before it stopped, so "
+                       "open the dashboard before running anything again.\n\n" + details[-1500:])
+            phone_alert.send("Tracker top-up ERROR", "The afternoon top-up hit an error. Open the dashboard.", "urgent")
+        if hasattr(broker, "is_connected") and not broker.is_connected():
+            done = False
+        if problem:
+            log(problem.splitlines()[0])
+        if report is None:
+            return
+        new_trades = sum(1 for r in report["plan"] if r.get("decision") == "FILLED")
+        closed = sum(1 for e in report["events"] if str(e).startswith("Closed"))
+        if not (new_trades or closed or problem):
+            log("Top-up finished: nothing new to trade.")
+            return
+        _, body = summarize(report, "trade")
+        subject = (f"Tracker {today.isoformat()} top-up {clock_words(minutes)}: {new_trades} new trade(s), "
+                   f"{closed} closed, account ${report['equity']:,.0f}")
+        body = ("AFTERNOON TOP-UP: new trades in free slots only (today's signals plus filings made today). "
+                "The morning run already did the day's exits and the strategy sleeves.\n\n" + body)
+        if problem:
+            body = problem + "\n\n" + body
+        if SC.PUBLISH_RESULTS:
+            ok, message = publish_safely()
+            if not ok:
+                body = ("The dashboard was NOT updated (the upload to GitHub failed: "
+                        f"{str(message).strip()[:200]}).\n\n" + body)
+        if dashboard_line():
+            body = dashboard_line() + "\n\n" + body
+        sent = send_email(subject, body, [path] if path else None)
+        log(f"Top-up finished. Email sent: {sent}. {subject}")
+        phone_alert.send("Tracker top-up", subject)
+    finally:
+        broker.disconnect()
+        if done:
+            with open(marker, "w") as f:
+                f.write("done\n")
+
+
 def _run_locked(plan_only, manual, mode, minutes, today, marker):
     if not plan_only:
         stay_awake()
@@ -429,7 +547,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             log("Started by hand (Run Tracker icon).")
         if market_days and not market_days.calendar_is_current(today):
             log("Note: the holiday list in market_days.py has run out. Ask for an update.")
-        if gateway_check() is False and not manual and minutes < LAST_TRY:
+        if gateway_check() is False and not manual and tries_left(minutes, today):
             log("IBKR is not sending prices, even after restarting IB Gateway, so this try did nothing. "
                 + next_try_words(minutes))
             return
@@ -439,7 +557,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
         broker.connect()
     except (SystemExit, Exception) as e:
         log(f"IB Gateway is not running, not logged in to the paper account, or not answering. {e}")
-        if not plan_only and (minutes >= LAST_TRY or manual):
+        if not plan_only and (manual or not tries_left(minutes, today)):
             phone_alert.send(
                 "Tracker did NOT run",
                 "IB Gateway was not logged in or not answering, so no trades were placed. Log in, then "
@@ -529,7 +647,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
                           f"{next_try_words(end_minutes)}")
             notices.insert(0, unfinished)
             body = unfinished + "\n\n" + body
-            subject += " - will try again" if end_minutes < LAST_TRY else " - did NOT finish"
+            subject += " - will try again" if tries_left(end_minutes, today) else " - did NOT finish"
         if sleeve_text:
             body = body + "\n\n" + sleeve_text
         still_connected = broker.is_connected() if hasattr(broker, "is_connected") else True
@@ -558,7 +676,7 @@ def _run_locked(plan_only, manual, mode, minutes, today, marker):
             elif problem_kind == "stopped":
                 phone_alert.send("Tracker stopped", problem[:300], "high")
             if retry:
-                if end_minutes < LAST_TRY:
+                if tries_left(end_minutes, today):
                     phone_alert.send("Tracker will try again", next_try_words(end_minutes), "high")
                 else:
                     phone_alert.send("Tracker did NOT finish", next_try_words(end_minutes), "urgent")

@@ -1,0 +1,76 @@
+name: Same-day SEC filing check
+
+# Scans the filings made so far TODAY (the morning check reads yesterday's) and saves the ranked list as
+# intraday_signals_ranked.csv. The tracker's afternoon top-ups (12:30 and 3:00 PM New York time, on the Mac) read it.
+# No market-data calls, so the morning check's API limits are never touched. It never changes daily_signals_ranked.csv.
+on:
+  schedule:
+    - cron: '25 15 * * 1-5'     # 11:25 AM New York in summer, 10:25 AM in winter (for the 12:30 top-up)
+    - cron: '25 16 * * 1-5'     # 11:25 AM New York in winter (for the 12:30 top-up)
+    - cron: '5 18 * * 1-5'      # 2:05 PM New York in summer, 1:05 PM in winter (for the 3:00 top-up)
+    - cron: '5 19 * * 1-5'      # 2:05 PM New York in winter (for the 3:00 top-up)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: intraday-sec-check
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install -r requirements.txt
+
+      - name: Get the filings made so far today
+        run: |
+          rm -f daily_signals_ranked.csv
+          python sec_daily_watcher.py --today
+
+      - name: Check for insider-selling and insider-buying clusters
+        run: python form4_cluster_check.py
+
+      - name: Check for going concern language
+        run: python going_concern_check.py
+
+      - name: Check 8-Ks for good and bad news
+        run: python positive_8k_check.py
+
+      - name: Look up tickers
+        run: python ticker_lookup.py
+
+      - name: Score them (no market data)
+        run: |
+          python scoring_engine.py --no-market
+          if [ -f daily_signals_ranked.csv ]; then
+            mv daily_signals_ranked.csv intraday_signals_ranked.csv
+          else
+            echo "company,ticker,cik,score,form_types,reasons,date_filed,num_filings,sample_filing_url" > intraday_signals_ranked.csv
+          fi
+          git checkout -- daily_signals_ranked.csv
+          echo "Top of today's list:"
+          head -6 intraday_signals_ranked.csv
+
+      - name: Save the list to the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f intraday_signals_ranked.csv
+          git commit -m "Update same-day signals" || exit 0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              exit 0
+            fi
+            echo "Push did not work, trying again in 10 seconds..."
+            sleep 10
+          done
+          exit 1

@@ -209,6 +209,37 @@ def load_signals(local_path=None, tries=None, wait=None):
     raise RuntimeError(f"could not download the signal list ({type(problem).__name__}: {problem})")
 
 
+def load_intraday_signals(url=None):
+    """Signals from filings made earlier today (the intraday scanner on GitHub), or [] if there are none yet or the
+    file cannot be read. Never raises."""
+    url = url if url is not None else getattr(C, "INTRADAY_SIGNALS_URL", "")
+    if not url:
+        return []
+    try:
+        resp = requests.get(url, timeout=30)
+        if resp.status_code == 404:
+            return []
+        resp.raise_for_status()
+        reader = csv.DictReader(io.StringIO(resp.text))
+        if not reader.fieldnames or not {"ticker", "score"} <= set(reader.fieldnames):
+            return []
+        return list(reader)
+    except Exception:
+        return []
+
+
+def merge_signals(daily, extra):
+    """One list, best score first. A ticker in both lists keeps its higher-scoring row."""
+    best, no_ticker = {}, []
+    for sig in list(daily) + list(extra):
+        ticker = (sig.get("ticker") or "").strip().upper()
+        if not ticker:
+            no_ticker.append(sig)
+        elif ticker not in best or _score(sig) > _score(best[ticker]):
+            best[ticker] = sig
+    return sorted(list(best.values()) + no_ticker, key=lambda s: -_score(s))
+
+
 def newest_signal_date(signals):
     best = None
     for sig in signals:
@@ -255,6 +286,54 @@ class Session:
 
 
 # ---------------------------------------------------------------- the trade plan
+
+LIMIT_REASON = "position or new-trade limit reached"
+REFILL_ROUNDS = 2                                     # extra planning rounds when a safety check frees a slot
+REFILL_AFTER = ("industry limit", "market regime")     # checks that block one stock, so another can take its place
+
+
+def _guards(plan, session, open_trades, equity, today):
+    try:
+        return risk.apply_entry_guards(plan, session, open_trades, equity, today)
+    except Exception as exc:                          # a guard problem must never stop the tracker
+        return [f"safety checks skipped because of an error: {exc}"]
+
+
+def plan_with_refills(session, signals, equity, open_trades, today, open_spreads, counts, avoid):
+    """Builds the trade plan and runs the safety checks. When a check blocks a planned trade for a reason that is
+    about that one stock (its industry is full, or no buys in a stressed market), the slot it leaves goes to the
+    next candidates that were waiting only for a free slot. The day's limits still hold. Returns (plan, notes)."""
+    held = {t["symbol"] for t in open_trades}
+    plan = build_plan(session, signals, equity, held, today, open_spreads, opened_today=counts, avoid=avoid)
+    print("Running the safety checks on the planned trades...")
+    planned = [r for r in plan if r.get("decision") == "TRADE"]
+    notes = _guards(plan, session, open_trades, equity, today)
+    first = {}
+    for sig in signals:
+        first.setdefault((sig.get("ticker") or "").strip().upper(), sig)
+    for _ in range(REFILL_ROUNDS):
+        freed = [r for r in planned if r.get("decision") != "TRADE"
+                 and str(r.get("decision_reason", "")).startswith(REFILL_AFTER)]
+        waiting = [r for r in plan if r.get("decision") == "SKIP" and r.get("decision_reason") == LIMIT_REASON
+                   and r.get("symbol") in first]
+        if not freed or not waiting:
+            break
+        kept = [r for r in plan if r.get("decision") == "TRADE"]
+        more = dict(counts or {})
+        for r in kept:
+            more[r["direction"]] = int(more.get(r["direction"], 0)) + 1
+        spreads = open_spreads + sum(1 for r in kept if r.get("spread_status") == "planned")
+        print(f"A safety check freed {len(freed)} slot(s): checking the next {len(waiting)} candidate(s)...")
+        waiting_ids = {id(r) for r in waiting}
+        extra = build_plan(session, [first[r["symbol"]] for r in waiting], equity, held | {r["symbol"] for r in kept},
+                           today, spreads, opened_today=more, avoid=avoid)
+        plan = [r for r in plan if id(r) not in waiting_ids] + extra
+        planned = [r for r in extra if r.get("decision") == "TRADE"]
+        if not planned:
+            break
+        notes += [n for n in _guards(plan, session, open_trades, equity, today) if n not in notes]
+    return plan, notes
+
 
 def build_plan(session, signals, equity, open_symbols, today, open_spread_count=0, opened_today=None, avoid=None):
     """opened_today: {"LONG": n, "SHORT": n} trades already opened earlier today (a second try the same day counts
@@ -988,7 +1067,9 @@ def print_plan(plan):
         print(f"  [{r['decision']}] {r['symbol'] or '-'} {r['direction']}{extra} score {r['score']}: {r['decision_reason']}{spread}")
 
 
-def run(mode, broker, signals_path=None, force=False, today=None):
+def run(mode, broker, signals_path=None, force=False, today=None, topup=None):
+    """topup: a label like "1230" for an extra run later the same day (auto_run.py). It also reads the signals from
+    today's filings, keeps the day's limits, writes its own plan file, and checks exits only if TOPUP_CHECK_EXITS."""
     today = today or today_et()
     os.makedirs(C.DATA_DIR, exist_ok=True)
     account = broker.account_id
@@ -1013,12 +1094,14 @@ def run(mode, broker, signals_path=None, force=False, today=None):
     if mode == "trade" and not positions_loaded(broker, open_trades, open_options):
         raise RetryLater("IBKR had not finished loading the account's positions, so nothing was changed.")
 
+    check_exits = not topup or getattr(C, "TOPUP_CHECK_EXITS", False)
     if mode == "trade":
         settle_pending(broker, open_trades, open_options, events)
-        open_trades, closed_now = manage_exits(session, open_trades, today)
+        open_trades, closed_now = manage_exits(session, open_trades, today) if check_exits else (open_trades, [])
         for c in closed_now:
             events.append(f"Closed {c['symbol']} ({c['exit_reason']}): P&L ${c['pnl']:,.2f}")
-        open_options, closed_options = manage_option_exits(session, open_options, open_trades, today, events)
+        open_options, closed_options = (manage_option_exits(session, open_options, open_trades, today, events)
+                                        if check_exits else (open_options, []))
         closed_trades += closed_now + closed_options
         for line in events:
             print(f"  {line}")
@@ -1026,7 +1109,7 @@ def run(mode, broker, signals_path=None, force=False, today=None):
         save_open_options(open_options)
         save_closed_trades(closed_trades)
 
-    plan_file = data_path(f"trade_plan_{today.isoformat()}.csv")
+    plan_file = data_path(f"trade_plan_{today.isoformat()}{'_topup' + str(topup) if topup else ''}.csv")
     if mode == "report":
         plan = read_csv(plan_file)
     else:
@@ -1037,6 +1120,11 @@ def run(mode, broker, signals_path=None, force=False, today=None):
             note = f"No new tracker trades today: {e}. Exits and the hedge still ran."
             print(f"  [SIGNALS] {note}")
             events.append(note)
+        if topup and not signals_path:
+            fresh = load_intraday_signals()
+            if fresh:
+                print(f"Loaded {len(fresh)} signal(s) from filings made today.")
+                signals = merge_signals(signals, fresh)
         print(f"Loaded {len(signals)} ranked signal(s).")
         newest = newest_signal_date(signals)
         if signals and newest and (today - newest).days > STALE_SIGNAL_DAYS:
@@ -1051,13 +1139,8 @@ def run(mode, broker, signals_path=None, force=False, today=None):
             avoid = names_to_avoid(names_today, in_account - mine)
         except Exception:
             avoid = {}
-        plan = build_plan(session, signals, equity, {t["symbol"] for t in open_trades}, today, len(open_options),
-                          opened_today=counts, avoid=avoid)
-        print("Running the safety checks on the planned trades...")
-        try:
-            guard_notes = risk.apply_entry_guards(plan, session, open_trades, equity, today)
-        except Exception as exc:                       # a guard problem must never stop the tracker
-            guard_notes = [f"safety checks skipped because of an error: {exc}"]
+        plan, guard_notes = plan_with_refills(session, signals, equity, open_trades, today, len(open_options),
+                                              counts, avoid)
         for note in guard_notes:
             print(f"  [GUARD] {note}")
             if mode == "trade":

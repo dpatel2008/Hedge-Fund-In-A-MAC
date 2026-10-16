@@ -20,19 +20,19 @@ SETTINGS_FILES = ("config.py", "sleeve_config.py", "brain_config.py")
 EXPECTED = {
     "allocator.py": "3e4489d76b4d4574",
     "analytics.py": "654de8ed328ce788",
-    "auto_run.py": "057ab64144985b0a",
+    "auto_run.py": "19368e528a07f1fc",
     "backtest.py": "177b9d6ed00aeab2",
     "brain_config.py": "7f2910cb20735e74",
     "brain_test.py": "5069975f2f96a0e9",
     "broker_extra.py": "83b5db0c07ee1582",
     "broker_ib.py": "30d0130cb92ebf01",
-    "config.py": "24e787840e4193ba",
+    "config.py": "d32b110f6fcd8d46",
     "dashboard.py": "6449510eb16eb168",
     "did_it_run.py": "bb8ef85a7a04b5ac",
     "email_overview.py": "1448f3fd64726caf",
-    "engine.py": "855b5ee371456be7",
+    "engine.py": "ffaba769145ce721",
     "ibc_setup.py": "076ac6f2b0c9f45e",
-    "install_schedule.py": "7535a3f62c567147",
+    "install_schedule.py": "9e7e755a609bf590",
     "make_icons.py": "e9bf939d47ba5859",
     "market_brain.py": "cc658e55515bc8c7",
     "market_days.py": "6ca8d64feb82f4dd",
@@ -125,6 +125,10 @@ def health():
                     problems.append(f"The {what} schedule points to a Python that no longer exists ({program}). Run: {fix}")
                 elif script and not os.path.exists(script):
                     problems.append(f"The {what} schedule points to a file that does not exist ({script}). Run: {fix}")
+                elif label == "com.dillen.sectracker" and not {(12, 30), (15, 0)} <= {
+                        (int(t.get("Hour", -1)), int(t.get("Minute", 0))) for t in plist.get("StartCalendarInterval", [])}:
+                    problems.append("The daily run schedule does not have the afternoon top-ups (12:30 and 3:00 PM) "
+                                    f"yet. Run: {fix}")
                 else:
                     print(f"  {what} schedule: OK")
             except Exception:

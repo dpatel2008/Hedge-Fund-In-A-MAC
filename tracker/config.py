@@ -13,6 +13,14 @@ SIGNALS_URL = (
 # Saved next to the tracker folder, whatever folder you run the tracker from.
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tracker_data")
 
+# Signals from filings made earlier the same day (GitHub's intraday scan). The afternoon top-ups read them too.
+INTRADAY_SIGNALS_URL = (
+    "https://raw.githubusercontent.com/dpatel2008/sec-filing-watcher/"
+    "main/intraday_signals_ranked.csv"
+)
+TOPUPS_ENABLED = True            # extra runs later in the day fill unused trade slots (auto_run.py)
+TOPUP_CHECK_EXITS = False        # the top-ups only add trades; exits are checked by the morning run (Signal Lab tested)
+
 # The Lovable dashboard (your trades and the money made). The morning email links to it. "" leaves the link out.
 DASHBOARD_URL = "https://signal-watcher-pro.lovable.app/portfolio"
 

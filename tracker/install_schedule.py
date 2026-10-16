@@ -2,11 +2,12 @@
 install_schedule.py
 Turns the daily automatic run on or off for this Mac.
 
-  python tracker/install_schedule.py          turn it on (9:40, 10:15 and 10:55 AM, Monday to Friday)
+  python tracker/install_schedule.py          turn it on (9:40, 10:15, 10:55 AM, 12:30 and 3:00 PM, Monday to Friday)
   python tracker/install_schedule.py remove   turn it off
 
 The Mac's clock must be set to Eastern Time. The tracker only trades if IB Gateway is open
-and logged in to the paper account, and it only runs once a day.
+and logged in to the paper account. The main run happens once a day; once it is done, the 12:30 and
+3:00 PM tries are afternoon top-ups that only add new trades in free slots (auto_run.py).
 """
 
 import os
@@ -15,7 +16,7 @@ import subprocess
 import sys
 
 LABEL = "com.dillen.sectracker"
-TRIES = [(9, 40), (10, 15), (10, 55)]
+TRIES = [(9, 40), (10, 15), (10, 55), (12, 30), (15, 0)]
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLIST = os.path.expanduser(f"~/Library/LaunchAgents/{LABEL}.plist")
@@ -62,7 +63,8 @@ def main():
         print("Could not turn it on:", (result.stderr or result.stdout).strip())
         return
     print("The automatic daily run is ON.")
-    print("It tries at 9:40, 10:15 and 10:55 AM Eastern, Monday to Friday, and only runs once a day.")
+    print("It tries at 9:40, 10:15 and 10:55 AM Eastern, Monday to Friday (the main run, once a day),")
+    print("and at 12:30 and 3:00 PM for the afternoon top-ups (new trades in free slots only).")
     print("Each morning, open IB Gateway and log in to the paper account before 9:40.")
 
 

@@ -6,12 +6,19 @@ we watch to all_filings.csv.
 SEC publishes each day's index around 10 PM Eastern, so a morning run reads
 the previous business day. If that day's file is not there yet (or it was a
 weekend or holiday), the script steps back to the latest day that exists.
+
+  python sec_daily_watcher.py --today
+reads the filings made so far TODAY instead (the "Same-day SEC filing check"
+workflow, which feeds the tracker's afternoon top-ups). Today's index does not
+exist yet, so it asks EDGAR's latest-filings feed and EDGAR full-text search,
+and keeps every filing either one finds.
 """
 
 import csv
 import re
 import sys
 import time
+import xml.etree.ElementTree as ET
 import requests
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -124,6 +131,187 @@ def parse_index(text: str):
     return filings
 
 
+# ---------------------------------------------------------------- today's filings (--today)
+
+LATEST_URL = "https://www.sec.gov/cgi-bin/browse-edgar"
+SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
+# the latest-filings feed matches the start of the form name ("4" also brings 424B5, "NT 10" brings NT 10-Q and NT 10-K)
+LATEST_TYPES = ["4", "8-K", "S-1", "S-3", "SC 13D", "SCHEDULE 13D", "NT 10", "10-K", "10-Q"]
+LATEST_PAGE = 100
+LATEST_MAX_PAGES = 60          # 6,000 filings of one kind is far more than one day has
+SEARCH_PAGE = 100
+SEARCH_MAX_FROM = 9900         # full-text search stops at 10,000 results
+PAUSE_SECONDS = 0.25           # the SEC allows 10 requests a second; this stays well under
+ATOM = "{http://www.w3.org/2005/Atom}"
+TITLE = re.compile(r"^(?P<form>.+?) - (?P<name>.+) \((?P<cik>\d{1,10})\) \((?P<role>[^)]*)\)\s*$")
+FILED = re.compile(r"Filed:\s*(?:</b>)?\s*(\d{4}-\d{2}-\d{2})")
+ACCESSION = re.compile(r"(\d{10}-\d{2}-\d{6})")
+CIK_IN_NAME = re.compile(r"\s*\((?:CIK\s*)?\d{4,10}\)\s*$|\s*\(CIK[^)]*\)")
+TICKERS_IN_NAME = re.compile(r"\s*\([A-Z0-9.,\- ]{1,30}\)\s*$")
+
+
+def _get(url, params, headers, tries=4):
+    """One request to the SEC. A busy answer or a network hiccup is tried again a few times."""
+    for attempt in range(1, tries + 1):
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+        except requests.RequestException:
+            if attempt == tries:
+                raise
+            time.sleep(10 * attempt)
+            continue
+        if resp.status_code in (429, 500, 502, 503, 504) and attempt < tries:
+            time.sleep(10 * attempt)
+            continue
+        resp.raise_for_status()
+        return resp
+    return None
+
+
+def _row(form_type, company, cik, day, accession):
+    cik = str(int(cik))
+    return {
+        "form_type": form_type,
+        "company": company.strip(),
+        "cik": cik,
+        "date_filed": day.strftime("%Y%m%d"),
+        "url": f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession}.txt",
+    }
+
+
+def parse_latest_feed(text, day):
+    """(rows filed on `day`, True if the page also reached filings from before `day`). Skips amendments."""
+    rows, older = [], False
+    root = ET.fromstring(text)
+    for entry in root.iter(f"{ATOM}entry"):
+        title = (entry.findtext(f"{ATOM}title") or "").strip()
+        summary = entry.findtext(f"{ATOM}summary") or ""
+        found = TITLE.match(title)
+        filed = FILED.search(summary)
+        accession = ACCESSION.search((entry.findtext(f"{ATOM}id") or "") + " " + summary)
+        if not (found and filed and accession):
+            continue
+        filed_day = datetime.strptime(filed.group(1), "%Y-%m-%d").date()
+        if filed_day < day:
+            older = True
+            continue
+        if filed_day > day:
+            continue
+        form_type = found.group("form").strip()
+        if form_type not in FORM_TYPES:
+            continue
+        rows.append(_row(form_type, found.group("name"), found.group("cik"), day, accession.group(1)))
+    return rows, older
+
+
+def latest_feed_filings(day):
+    """Today's filings from EDGAR's latest-filings feed (newest first, a page of 100 at a time).
+    Raises only if not one kind of filing could be read."""
+    headers = dict(HEADERS)
+    rows, failed = [], []
+    for form in LATEST_TYPES:
+        got = 0
+        try:
+            for page in range(LATEST_MAX_PAGES):
+                params = {"action": "getcurrent", "type": form, "company": "", "dateb": "", "owner": "include",
+                          "start": page * LATEST_PAGE, "count": LATEST_PAGE, "output": "atom"}
+                resp = _get(LATEST_URL, params, headers)
+                time.sleep(PAUSE_SECONDS)
+                if resp is None:
+                    break
+                found, older = parse_latest_feed(resp.text, day)
+                rows += found
+                got += len(found)
+                if older or resp.text.count("<entry>") < LATEST_PAGE:
+                    break
+        except Exception as e:
+            failed.append(form)
+            print(f"  latest-filings feed, {form}: stopped ({type(e).__name__}: {e})")
+        print(f"  latest-filings feed, {form}: {got} row(s)")
+    if len(failed) == len(LATEST_TYPES):
+        raise RuntimeError("not one kind of filing could be read")
+    return rows
+
+
+def parse_search_hits(data, day):
+    """Rows from one page of EDGAR full-text search results: one row for each company named on the filing."""
+    rows = []
+    for hit in (data.get("hits") or {}).get("hits") or []:
+        src = hit.get("_source") or {}
+        form_type = (src.get("form") or src.get("file_type") or "").strip()
+        if form_type not in FORM_TYPES:
+            continue
+        if (src.get("file_date") or "") != day.isoformat():
+            continue
+        accession = src.get("adsh") or str(hit.get("_id") or "").split(":")[0]
+        if not ACCESSION.fullmatch(accession or ""):
+            continue
+        names = src.get("display_names") or []
+        for i, cik in enumerate(src.get("ciks") or []):
+            if not str(cik).strip().isdigit():
+                continue
+            name = names[i] if i < len(names) else ""
+            name = TICKERS_IN_NAME.sub("", CIK_IN_NAME.sub("", name)).strip()
+            rows.append(_row(form_type, name, cik, day, accession))
+    return rows
+
+
+def search_filings(day):
+    """Today's filings from EDGAR full-text search (asked one kind of filing at a time).
+    Raises only if not one kind of filing could be read."""
+    headers = {"User-Agent": USER_AGENT, "Accept-Encoding": "gzip, deflate"}
+    rows, failed = [], []
+    for form in FORM_TYPES:
+        got = 0
+        start = 0
+        try:
+            while start <= SEARCH_MAX_FROM:
+                params = {"forms": form, "dateRange": "custom", "startdt": day.isoformat(),
+                          "enddt": day.isoformat(), "from": start}
+                resp = _get(SEARCH_URL, params, headers)
+                time.sleep(PAUSE_SECONDS)
+                if resp is None:
+                    break
+                data = resp.json()
+                hits = (data.get("hits") or {}).get("hits") or []
+                found = parse_search_hits(data, day)
+                rows += found
+                got += len(found)
+                if len(hits) < SEARCH_PAGE:
+                    break
+                start += SEARCH_PAGE
+        except Exception as e:
+            failed.append(form)
+            print(f"  full-text search, {form}: stopped ({type(e).__name__}: {e})")
+        print(f"  full-text search, {form}: {got} row(s)")
+    if len(failed) == len(FORM_TYPES):
+        raise RuntimeError("not one kind of filing could be read")
+    return rows
+
+
+def todays_filings(day=None):
+    """Every watched filing made so far today. Uses both EDGAR sources and keeps one row per filing and company.
+    Raises only if both sources fail."""
+    day = day or datetime.now(ZoneInfo("America/New_York")).date()
+    found, problems = [], []
+    for name, source in (("latest-filings feed", latest_feed_filings), ("full-text search", search_filings)):
+        try:
+            found += source(day)
+        except Exception as e:
+            problems.append(f"{name}: {type(e).__name__}: {e}")
+            print(f"  The {name} did not work ({type(e).__name__}: {e}). Using the other source.")
+    if len(problems) == 2:
+        raise RuntimeError("both EDGAR sources failed: " + " | ".join(problems))
+    rows, seen, one_url = [], set(), {}
+    for row in found:
+        filing = row["url"].rsplit("/", 1)[-1]
+        row["url"] = one_url.setdefault(filing, row["url"])   # one address per filing (the Form 4 check opens each once)
+        if (filing, row["cik"]) not in seen:
+            seen.add((filing, row["cik"]))
+            rows.append(row)
+    return day, rows
+
+
 def write_csv(filings):
     with open(OUTPUT_CSV, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=["form_type", "company", "cik", "date_filed", "url"])
@@ -133,6 +321,18 @@ def write_csv(filings):
 
 
 def main():
+    if "--today" in sys.argv:
+        d, filings = todays_filings()
+        print(f"Found {len(filings)} filing(s) made so far on {d.isoformat()}:")
+        counts = {}
+        for f in filings:
+            counts[f["form_type"]] = counts.get(f["form_type"], 0) + 1
+        for form_type, count in sorted(counts.items()):
+            print(f"  {form_type}: {count}")
+        write_csv(filings)
+        print(f"Wrote {OUTPUT_CSV}")
+        return
+
     d, text = find_latest_index()
     if text is None:
         print("ERROR: no EDGAR daily index found in the last week.")
