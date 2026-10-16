@@ -37,7 +37,7 @@ BASE = {
     "name": "today's rules", "hold": C.HOLD_CALENDAR_DAYS, "stop": C.STOP_ATR_MULT, "target": C.TARGET_ATR_MULT,
     "positions": C.MAX_OPEN_POSITIONS, "max_pos": C.MAX_POSITION_PCT, "risk": C.RISK_PER_TRADE_PCT,
     "budget": 0.55, "new_per_day": C.MAX_NEW_SHORTS_PER_RUN, "candidates": C.MAX_CANDIDATES_TO_ANALYZE,
-    "min_dollar_volume": C.MIN_AVG_DOLLAR_VOLUME, "hedge": "dollar",
+    "min_dollar_volume": C.MIN_AVG_DOLLAR_VOLUME, "hedge": "dollar", "exits_at": "open",
 }
 HOLDS = (14, 30, 45, 60)
 EXITS = (("stop 2, target 3 (today)", 2.0, 3.0), ("stop 3, target 5", 3.0, 5.0), ("stop 3, no target", 3.0, None),
@@ -107,6 +107,11 @@ def run(M, ready, v):
                 else:
                     still.append(t)
                     continue
+            elif v["exits_at"] == "all day":
+                px, reason = all_day_exit(t["rule"], px, float(P.H[i, t["j"]]), float(P.L[i, t["j"]]), day)
+                if reason is None:
+                    still.append(t)
+                    continue
             else:
                 reason = A.exit_reason(t["rule"], px, day)
                 if reason is None:
@@ -159,6 +164,25 @@ def run(M, ready, v):
             held.add(s["sym"])
             new += 1
             gross += qty * price
+        if v["exits_at"] == "all day":                     # orders waiting at IBKR can fill the day a short opens
+            kept = []
+            for t in open_t:
+                hit = None
+                if t["i"] == i:
+                    h, l = float(P.H[i, t["j"]]), float(P.L[i, t["j"]])
+                    if h > 0 and h >= t["rule"]["stop"]:
+                        hit = (t["rule"]["stop"], "stop loss")
+                    elif l > 0 and l <= t["rule"]["target"]:
+                        hit = (t["rule"]["target"], "profit target")
+                if hit is None:
+                    kept.append(t)
+                    continue
+                fill = hit[0] * (1 + t["cost"])
+                pnl = (t["entry"] - fill) * t["qty"]
+                realized += pnl
+                closed.append({"ret": 1 - fill / t["entry"] if t["entry"] > 0 else 0.0, "pnl": pnl,
+                               "reason": hit[1], "days": 0})
+            open_t = kept
         unrealized = net = net_beta = gross = 0.0
         for t in open_t:
             mark = _mark(M, t, i)
@@ -178,6 +202,24 @@ def run(M, ready, v):
         gross_pct.append(gross / equity if equity > 0 else 0.0)
         counts.append(len(open_t))
     return summarize(v, curve, closed, gross_pct, counts, full_days)
+
+
+def all_day_exit(rule, open_px, high, low, day):
+    """A short with its stop-loss and profit target waiting at IBKR all day: (fill price, reason) or (None, None).
+    A gap past either level fills at the open; if the day touched both, the stop is assumed to come first."""
+    stop, target = rule["stop"], rule["target"]
+    if open_px >= stop:
+        return open_px, "stop loss"
+    if open_px <= target:
+        return open_px, "profit target"
+    exit_by = A.parse_date(rule.get("exit_by", ""))
+    if exit_by and day >= exit_by:
+        return open_px, "time exit"
+    if high > 0 and high >= stop:
+        return stop, "stop loss"
+    if low > 0 and low <= target:
+        return target, "profit target"
+    return None, None
 
 
 def _mark(M, t, i):
@@ -221,6 +263,19 @@ def variants():
             for book_name, positions, max_pos, risk in BOOKS:
                 v = dict(BASE, hold=hold, stop=stop, target=target, positions=positions, max_pos=max_pos, risk=risk)
                 v["name"] = f"hold {hold}d, {exit_name}, {book_name}"
+                out.append(v)
+    return out
+
+
+def exit_timing():
+    """Once-a-morning exits (today) vs stop-loss and profit-target orders waiting at IBKR all day."""
+    out = []
+    for when in ("open", "all day"):
+        for stop in (2.0, 3.0, 4.0, None):
+            for target in (3.0, 5.0, None):
+                v = dict(BASE, exits_at=when, stop=stop, target=target)
+                v["name"] = (f"exits {'each morning' if when == 'open' else 'all day'}: "
+                             f"stop {stop or 'none'}, target {target or 'none'}")
                 out.append(v)
     return out
 
@@ -270,6 +325,12 @@ def main():
             log(f"  {r['name']}: {r['yearly'] * 100:.1f}% a year, Sharpe {r['sharpe']:.2f}, worst drop "
                 f"{r['max_drawdown'] * 100:.1f}%, {r['trades']} trades, average {r['avg_gross'] * 100:.0f}% used")
     grid = list(results[1:])
+    for v in exit_timing():
+        r = run(M, ready, v)
+        if r:
+            results.append(r)
+            log(f"  {r['name']}: {r['yearly'] * 100:.1f}% a year, Sharpe {r['sharpe']:.2f}, worst drop "
+                f"{r['max_drawdown'] * 100:.1f}%")
     for v in more_money():
         r = run(M, ready, v)
         if r:
