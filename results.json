@@ -1,11 +1,11 @@
 {
- "updated": "2026-10-15 12:54 ET",
+ "updated": "2026-10-16 09:53 ET",
  "note": "Paper trading results. Not real money. Not investment advice.",
  "account": {
-  "equity": 1005392.47,
+  "equity": 1006460.37,
   "start_equity": 1000650.65,
-  "return_pct": 0.00474,
-  "spy_return_pct": -0.00697,
+  "return_pct": 0.00581,
+  "spy_return_pct": -0.00225,
   "since": "2026-10-05"
  },
  "curve": [
@@ -48,6 +48,11 @@
    "date": "2026-10-15",
    "equity": 1005392.47,
    "spy": 769.54
+  },
+  {
+   "date": "2026-10-16",
+   "equity": 1006460.37,
+   "spy": 773.2
   }
  ],
  "tracker": {
@@ -57,9 +62,9 @@
     "side": "SHORT",
     "qty": 11154.0,
     "entry_price": 3.72,
-    "price": 3.53,
-    "pnl": 2119.2600000000043,
-    "pnl_pct": 0.0510752688172044,
+    "price": 3.695,
+    "pnl": 278.85000000000394,
+    "pnl_pct": 0.006720430107526976,
     "exit_by": "2026-10-21",
     "signals": "INSIDER_SELLING"
    },
@@ -68,9 +73,9 @@
     "side": "LONG",
     "qty": 1332.0,
     "entry_price": 8.85,
-    "price": 8.325,
-    "pnl": -699.3000000000005,
-    "pnl_pct": -0.059322033898305135,
+    "price": 8.92,
+    "pnl": 93.24000000000038,
+    "pnl_pct": 0.007909604519774044,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_BUYING"
    },
@@ -79,9 +84,9 @@
     "side": "SHORT",
     "qty": 594.0,
     "entry_price": 74.75,
-    "price": 75.04,
-    "pnl": -172.2600000000037,
-    "pnl_pct": -0.0038795986622074414,
+    "price": 74.35,
+    "pnl": 237.60000000000338,
+    "pnl_pct": 0.005351170568561949,
     "exit_by": "2026-10-22",
     "signals": "NEGATIVE_8K; EVENT_8K"
    },
@@ -90,9 +95,9 @@
     "side": "SHORT",
     "qty": 1276.0,
     "entry_price": 7.14,
-    "price": 7.16,
-    "pnl": -25.52000000000059,
-    "pnl_pct": -0.002801120448179337,
+    "price": 7.605,
+    "pnl": -593.3400000000009,
+    "pnl_pct": -0.06512605042016817,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_SELLING"
    },
@@ -101,22 +106,44 @@
     "side": "SHORT",
     "qty": 6697.0,
     "entry_price": 7.46,
-    "price": 7.58,
-    "pnl": -803.6400000000007,
-    "pnl_pct": -0.016085790884718513,
+    "price": 7.6,
+    "pnl": -937.5799999999979,
+    "pnl_pct": -0.01876675603217154,
     "exit_by": "2026-10-22",
     "signals": "INSIDER_SELLING"
    },
    {
     "symbol": "LEVI",
     "side": "LONG",
-    "qty": 2661.0,
+    "qty": 1845.0,
     "entry_price": 18.903619,
-    "price": 20.2,
-    "pnl": 3449.669841000001,
-    "pnl_pct": 0.06857845579727355,
+    "price": 20.7,
+    "pnl": 3314.3229450000003,
+    "pnl_pct": 0.09502841757443377,
     "exit_by": "2026-10-22",
     "signals": "POSITIVE_8K; EVENT_8K"
+   },
+   {
+    "symbol": "LEN",
+    "side": "SHORT",
+    "qty": 646.0,
+    "entry_price": 77.71,
+    "price": 77.91,
+    "pnl": -129.20000000000184,
+    "pnl_pct": -0.0025736713421696416,
+    "exit_by": "2026-10-30",
+    "signals": "DILUTION; EVENT_8K"
+   },
+   {
+    "symbol": "RXRX",
+    "side": "SHORT",
+    "qty": 5667.0,
+    "entry_price": 4.09,
+    "price": 4.09,
+    "pnl": -0.0,
+    "pnl_pct": -0.0,
+    "exit_by": "2026-10-30",
+    "signals": "DILUTION; EVENT_8K"
    }
   ],
   "closed_trades": [
@@ -155,146 +182,177 @@
     "pnl": -1180.0,
     "return_pct": -0.6483516483516484,
     "reason": "stock trade closed"
+   },
+   {
+    "symbol": "LEVI",
+    "side": "LONG",
+    "entry_date": "2026-10-08",
+    "exit_date": "2026-10-16",
+    "pnl": 1098.6468960000007,
+    "return_pct": 0.0712234519749896,
+    "reason": "profit target"
    }
   ],
-  "closed_count": 4,
-  "closed_pnl": 2177.54,
-  "hit_rate": 0.5
+  "closed_count": 5,
+  "closed_pnl": 3276.19,
+  "hit_rate": 0.6
  },
  "sleeves": [
   {
    "name": "trend",
-   "value": 58358.53,
+   "value": 58343.11,
    "realized": 0.0,
-   "unrealized": -0.11,
+   "unrealized": -15.53,
    "positions": [
     {
      "symbol": "DBC",
      "qty": 358,
-     "price": 33.31,
-     "value": 11924.98,
-     "pnl": 0.0
+     "price": 33.29,
+     "value": 11917.82,
+     "pnl": -7.16
     },
     {
      "symbol": "EEM",
      "qty": 174,
-     "price": 63.68,
-     "value": 11080.32,
-     "pnl": -1.74
+     "price": 63.41,
+     "value": 11033.34,
+     "pnl": -48.72
     },
     {
      "symbol": "QQQ",
      "qty": 18,
-     "price": 723.69,
-     "value": 13026.42,
-     "pnl": 0.18
+     "price": 722.49,
+     "value": 13004.82,
+     "pnl": -21.42
     },
     {
      "symbol": "SPY",
      "qty": 29,
-     "price": 769.89,
-     "value": 22326.81,
-     "pnl": 1.45
+     "price": 771.97,
+     "value": 22387.13,
+     "pnl": 61.77
     }
    ]
   },
   {
    "name": "momentum",
-   "value": 136395.78,
+   "value": 136072.84,
    "realized": 0.0,
-   "unrealized": -139.64,
+   "unrealized": -462.58,
    "positions": [
     {
      "symbol": "ADI",
      "qty": 47,
-     "price": 399.42,
-     "value": 18772.74,
-     "pnl": -24.91
+     "price": 400.8,
+     "value": 18837.6,
+     "pnl": 39.95
     },
     {
      "symbol": "AMAT",
      "qty": 22,
-     "price": 430.08,
-     "value": 9461.76,
-     "pnl": -8.58
+     "price": 424.1,
+     "value": 9330.2,
+     "pnl": -140.14
     },
     {
      "symbol": "FCX",
      "qty": 201,
-     "price": 69.18,
-     "value": 13905.18,
-     "pnl": -8.04
+     "price": 70.43,
+     "value": 14156.43,
+     "pnl": 243.21
     },
     {
      "symbol": "FTNT",
      "qty": 75,
-     "price": 181.72,
-     "value": 13629.0,
-     "pnl": -11.25
+     "price": 175.72,
+     "value": 13179.0,
+     "pnl": -461.25
     },
     {
      "symbol": "LRCX",
      "qty": 32,
-     "price": 273.16,
-     "value": 8741.12,
-     "pnl": -9.92
+     "price": 272.25,
+     "value": 8712.0,
+     "pnl": -39.04
     },
     {
      "symbol": "MPC",
      "qty": 34,
-     "price": 477.19,
-     "value": 16224.46,
-     "pnl": -24.82
+     "price": 482.0,
+     "value": 16388.0,
+     "pnl": 138.72
     },
     {
      "symbol": "MU",
      "qty": 9,
-     "price": 910.1,
-     "value": 8190.9,
-     "pnl": 0.0
+     "price": 900.26,
+     "value": 8102.34,
+     "pnl": -88.56
     },
     {
      "symbol": "PANW",
      "qty": 27,
-     "price": 371.76,
-     "value": 10037.52,
-     "pnl": -6.48
+     "price": 359.01,
+     "value": 9693.27,
+     "pnl": -350.73
     },
     {
      "symbol": "PSX",
      "qty": 70,
-     "price": 292.02,
-     "value": 20441.4,
-     "pnl": -21.7
+     "price": 293.86,
+     "value": 20570.2,
+     "pnl": 107.1
     },
     {
      "symbol": "VLO",
      "qty": 38,
-     "price": 447.15,
-     "value": 16991.7,
-     "pnl": -23.94
+     "price": 450.1,
+     "value": 17103.8,
+     "pnl": 88.16
     }
    ]
   },
   {
    "name": "meanrev",
-   "value": 0.0,
+   "value": 28980.52,
    "realized": 0.0,
-   "unrealized": 0.0,
-   "positions": []
+   "unrealized": -14.13,
+   "positions": [
+    {
+     "symbol": "AMD",
+     "qty": 17,
+     "price": 542.55,
+     "value": 9223.35,
+     "pnl": 0.0
+    },
+    {
+     "symbol": "CSCO",
+     "qty": 91,
+     "price": 107.93,
+     "value": 9821.63,
+     "pnl": -11.83
+    },
+    {
+     "symbol": "NVDA",
+     "qty": 46,
+     "price": 215.99,
+     "value": 9935.54,
+     "pnl": -2.3
+    }
+   ]
   },
   {
    "name": "cash",
-   "value": 470047.72,
-   "realized": 0.0,
-   "unrealized": -23.53,
+   "value": 294770.94,
+   "realized": 34.88,
+   "unrealized": 58.89,
    "positions": [
     {
      "symbol": "SGOV",
-     "qty": 4675,
-     "price": 100.54,
-     "value": 470047.72,
-     "pnl": -23.53
+     "qty": 2931,
+     "price": 100.57,
+     "value": 294770.94,
+     "pnl": 58.89
     }
    ]
   }
@@ -303,23 +361,23 @@
   {
    "strategy": "SEC-filing tracker",
    "budget_pct": 0.55,
-   "using": 208372.32,
-   "using_pct": 0.2073,
-   "open_pnl": 3715.14
+   "using": 266232.86,
+   "using_pct": 0.2644,
+   "open_pnl": 3656.57
   },
   {
    "strategy": "IWM hedge",
    "budget_pct": null,
-   "using": 78969.25,
-   "using_pct": 0.0786,
-   "open_pnl": -898.61
+   "using": 169567.8,
+   "using_pct": 0.1684,
+   "open_pnl": 71.15
   },
   {
    "strategy": "Trend",
    "budget_pct": 0.18,
-   "using": 58358.53,
-   "using_pct": 0.058,
-   "open_pnl": -0.11
+   "using": 58343.11,
+   "using_pct": 0.0579,
+   "open_pnl": -15.53
   },
   {
    "strategy": "Sector rotation",
@@ -331,16 +389,16 @@
   {
    "strategy": "Momentum",
    "budget_pct": 0.14,
-   "using": 136395.78,
-   "using_pct": 0.1357,
-   "open_pnl": -139.64
+   "using": 136072.84,
+   "using_pct": 0.1351,
+   "open_pnl": -462.58
   },
   {
    "strategy": "Mean reversion",
    "budget_pct": 0.08,
-   "using": 0.0,
-   "using_pct": 0.0,
-   "open_pnl": 0.0
+   "using": 28980.52,
+   "using_pct": 0.0288,
+   "open_pnl": -14.13
   },
   {
    "strategy": "Pairs",
@@ -352,98 +410,107 @@
   {
    "strategy": "T-bills (idle cash)",
    "budget_pct": null,
-   "using": 470047.72,
-   "using_pct": 0.4676,
-   "open_pnl": -23.53
+   "using": 294770.94,
+   "using_pct": 0.2927,
+   "open_pnl": 58.89
   },
   {
    "strategy": "Cash (includes money from short sales)",
    "budget_pct": 0.05,
-   "using": 340602.81,
-   "using_pct": 0.3388,
+   "using": 487204.95,
+   "using_pct": 0.4838,
    "open_pnl": 0.0
   }
  ],
- "capital_as_of": "2026-10-15 12:54 ET",
+ "capital_as_of": "2026-10-16 09:53 ET",
  "regime": {
   "state": "normal",
-  "spy": 769.6,
-  "sma": 724.2136999999999,
+  "spy": 771.79,
+  "sma": 724.6333999999999,
   "above": true,
-  "vol20": 0.10306486311126514,
+  "vol20": 0.0960444466185904,
   "sma_days": 200
  },
  "overview": {
-  "day": "2026-10-15",
+  "day": "2026-10-16",
   "periods": [
    {
     "label": "Since the last run",
-    "since": "2026-10-14",
-    "dollars": -7347.63,
-    "pct": -0.00726,
-    "spy_pct": -0.01089,
-    "spy_dollars": -11025.45
+    "since": "2026-10-15",
+    "dollars": 1067.9,
+    "pct": 0.00106,
+    "spy_pct": 0.00476,
+    "spy_dollars": 4781.74
    },
    {
     "label": "Since the start",
     "since": "2026-10-05",
-    "dollars": 4741.82,
-    "pct": 0.00474,
-    "spy_pct": -0.00697,
-    "spy_dollars": -6972.82
+    "dollars": 5809.72,
+    "pct": 0.00581,
+    "spy_pct": -0.00225,
+    "spy_dollars": -2246.8
    }
   ],
   "strategies": [
    {
     "key": "tracker",
     "name": "SEC-filing tracker",
-    "using": 208372.32,
-    "using_pct": 0.2073,
-    "open_pnl": 3715.14,
-    "closed_pnl": 2177.54,
-    "total_pnl": 5892.68
+    "using": 266232.86,
+    "using_pct": 0.2644,
+    "open_pnl": 3656.57,
+    "closed_pnl": 3276.19,
+    "total_pnl": 6932.76
    },
    {
     "key": "hedge",
     "name": "IWM hedge",
-    "using": 78969.25,
-    "using_pct": 0.0786,
-    "open_pnl": -898.61,
+    "using": 169567.8,
+    "using_pct": 0.1684,
+    "open_pnl": 71.15,
     "closed_pnl": null,
-    "total_pnl": -898.61
+    "total_pnl": 71.15
    },
    {
     "key": "trend",
     "name": "Trend",
-    "using": 58358.53,
-    "using_pct": 0.058,
-    "open_pnl": -0.11,
+    "using": 58343.11,
+    "using_pct": 0.0579,
+    "open_pnl": -15.53,
     "closed_pnl": 0.0,
-    "total_pnl": -0.11
+    "total_pnl": -15.53
    },
    {
     "key": "momentum",
     "name": "Momentum",
-    "using": 136395.78,
-    "using_pct": 0.1357,
-    "open_pnl": -139.64,
+    "using": 136072.84,
+    "using_pct": 0.1351,
+    "open_pnl": -462.58,
     "closed_pnl": 0.0,
-    "total_pnl": -139.64
+    "total_pnl": -462.58
+   },
+   {
+    "key": "meanrev",
+    "name": "Mean reversion",
+    "using": 28980.52,
+    "using_pct": 0.0288,
+    "open_pnl": -14.13,
+    "closed_pnl": 0.0,
+    "total_pnl": -14.13
    },
    {
     "key": "cash",
     "name": "T-bills (SGOV)",
-    "using": 470047.72,
-    "using_pct": 0.4676,
-    "open_pnl": -23.53,
-    "closed_pnl": 0.0,
-    "total_pnl": -23.53
+    "using": 294770.94,
+    "using_pct": 0.2927,
+    "open_pnl": 58.89,
+    "closed_pnl": 34.88,
+    "total_pnl": 93.77
    },
    {
     "key": "plain",
     "name": "Cash (incl. short sales)",
-    "using": 340602.81,
-    "using_pct": 0.3388,
+    "using": 487204.95,
+    "using_pct": 0.4838,
     "open_pnl": null,
     "closed_pnl": null,
     "total_pnl": null
@@ -454,201 +521,81 @@
    {
     "strategy": "tracker",
     "strategy_name": "SEC-filing tracker",
-    "action": "Sell",
-    "symbol": "PENG",
-    "shares": 622.0,
-    "price": 60.38,
-    "pnl": -7171.66,
-    "note": "stop loss"
+    "action": "Short",
+    "symbol": "LEN",
+    "shares": 646.0,
+    "price": 77.71,
+    "pnl": null,
+    "note": ""
    },
    {
     "strategy": "tracker",
     "strategy_name": "SEC-filing tracker",
-    "action": "Cover",
-    "symbol": "CHRN",
-    "shares": 1636.0,
-    "price": 14.84,
-    "pnl": 8310.88,
-    "note": "profit target"
-   },
-   {
-    "strategy": "tracker",
-    "strategy_name": "SEC-filing tracker",
-    "action": "Cover",
-    "symbol": "ARQQ",
-    "shares": 312.0,
-    "price": 15.28,
-    "pnl": 2218.32,
-    "note": "profit target"
+    "action": "Short",
+    "symbol": "RXRX",
+    "shares": 5667.0,
+    "price": 4.09,
+    "pnl": null,
+    "note": ""
    },
    {
     "strategy": "tracker",
     "strategy_name": "SEC-filing tracker",
     "action": "Sell",
-    "symbol": "PENG long call",
-    "shares": 2.0,
-    "price": 3.2,
-    "pnl": -1180.0,
-    "note": "stock trade closed"
+    "symbol": "LEVI",
+    "shares": 816.0,
+    "price": 20.25,
+    "pnl": 1098.65,
+    "note": "profit target"
    },
    {
-    "strategy": "trend",
-    "strategy_name": "Trend",
+    "strategy": "meanrev",
+    "strategy_name": "Mean reversion",
     "action": "Buy",
-    "symbol": "SPY",
-    "shares": 29.0,
-    "price": 769.84,
+    "symbol": "NVDA",
+    "shares": 46.0,
+    "price": 216.04,
     "pnl": null,
     "note": ""
    },
    {
-    "strategy": "trend",
-    "strategy_name": "Trend",
+    "strategy": "meanrev",
+    "strategy_name": "Mean reversion",
     "action": "Buy",
-    "symbol": "QQQ",
-    "shares": 18.0,
-    "price": 723.68,
+    "symbol": "CSCO",
+    "shares": 91.0,
+    "price": 108.06,
     "pnl": null,
     "note": ""
    },
    {
-    "strategy": "trend",
-    "strategy_name": "Trend",
+    "strategy": "meanrev",
+    "strategy_name": "Mean reversion",
     "action": "Buy",
-    "symbol": "DBC",
-    "shares": 358.0,
-    "price": 33.31,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "trend",
-    "strategy_name": "Trend",
-    "action": "Buy",
-    "symbol": "EEM",
-    "shares": 174.0,
-    "price": 63.69,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "PSX",
-    "shares": 70.0,
-    "price": 292.33,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "ADI",
-    "shares": 47.0,
-    "price": 399.95,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "VLO",
-    "shares": 38.0,
-    "price": 447.78,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "MPC",
-    "shares": 34.0,
-    "price": 477.92,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "FCX",
-    "shares": 201.0,
-    "price": 69.22,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "FTNT",
-    "shares": 75.0,
-    "price": 181.87,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "PANW",
-    "shares": 27.0,
-    "price": 372.0,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "AMAT",
-    "shares": 22.0,
-    "price": 430.47,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "LRCX",
-    "shares": 32.0,
-    "price": 273.47,
-    "pnl": null,
-    "note": ""
-   },
-   {
-    "strategy": "momentum",
-    "strategy_name": "Momentum",
-    "action": "Buy",
-    "symbol": "MU",
-    "shares": 9.0,
-    "price": 910.1,
+    "symbol": "AMD",
+    "shares": 17.0,
+    "price": 542.55,
     "pnl": null,
     "note": ""
    },
    {
     "strategy": "cash",
     "strategy_name": "T-bills (SGOV)",
-    "action": "Buy",
+    "action": "Sell",
     "symbol": "SGOV",
-    "shares": 4675.0,
-    "price": 100.55,
-    "pnl": null,
+    "shares": 1744.0,
+    "price": 100.57,
+    "pnl": 34.88,
     "note": ""
    }
   ],
   "scorecard": [
    {
     "group": "Tracker stocks",
-    "trades": 3,
-    "win_rate": 0.6667,
-    "total_pnl": 3357.54,
-    "avg_win": 5264.6,
+    "trades": 4,
+    "win_rate": 0.75,
+    "total_pnl": 4456.19,
+    "avg_win": 3875.95,
     "avg_loss": -7171.66
    },
    {
