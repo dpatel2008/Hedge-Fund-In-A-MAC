@@ -57,6 +57,7 @@ jobs:
             echo "company,ticker,cik,score,form_types,reasons,date_filed,num_filings,sample_filing_url" > intraday_signals_ranked.csv
           fi
           git checkout -- daily_signals_ranked.csv
+          echo "::notice title=Same-day signals::$(( $(wc -l < intraday_signals_ranked.csv) - 1 )) companies with a signal"
           echo "Top of today's list:"
           head -6 intraday_signals_ranked.csv
 

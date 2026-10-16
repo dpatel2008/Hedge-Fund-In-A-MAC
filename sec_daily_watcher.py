@@ -15,6 +15,7 @@ and keeps every filing either one finds.
 """
 
 import csv
+import os
 import re
 import sys
 import time
@@ -289,15 +290,22 @@ def search_filings(day):
     return rows
 
 
+SOURCE_COUNTS = {}             # rows each EDGAR source gave in the last todays_filings() call
+
+
 def todays_filings(day=None):
     """Every watched filing made so far today. Uses both EDGAR sources and keeps one row per filing and company.
     Raises only if both sources fail."""
     day = day or datetime.now(ZoneInfo("America/New_York")).date()
     found, problems = [], []
+    SOURCE_COUNTS.clear()
     for name, source in (("latest-filings feed", latest_feed_filings), ("full-text search", search_filings)):
         try:
-            found += source(day)
+            rows = source(day)
+            SOURCE_COUNTS[name] = len(rows)
+            found += rows
         except Exception as e:
+            SOURCE_COUNTS[name] = f"failed ({type(e).__name__})"
             problems.append(f"{name}: {type(e).__name__}: {e}")
             print(f"  The {name} did not work ({type(e).__name__}: {e}). Using the other source.")
     if len(problems) == 2:
@@ -331,6 +339,10 @@ def main():
             print(f"  {form_type}: {count}")
         write_csv(filings)
         print(f"Wrote {OUTPUT_CSV}")
+        if os.environ.get("GITHUB_ACTIONS"):          # a note on the workflow run, readable without the full log
+            sources = ", ".join(f"{k}: {v}" for k, v in SOURCE_COUNTS.items())
+            kinds = ", ".join(f"{k} {v}" for k, v in sorted(counts.items()))
+            print(f"::notice title=Same-day filings::{len(filings)} filing rows ({kinds}). Sources: {sources}")
         return
 
     d, text = find_latest_index()
