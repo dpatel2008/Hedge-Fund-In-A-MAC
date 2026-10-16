@@ -1,4 +1,5 @@
 company,ticker,cik,score,form_types,reasons,date_filed,num_filings,sample_filing_url
+MYX Inc.,,0002087656,65,10-Q; NT 10-Q,NT 10-Q filed (+30) | Going concern language in filing (+35),20261016,2,https://www.sec.gov/Archives/edgar/data/2087656/0001683168-26-007917.txt
 CUMULUS MEDIA INC,CMLS,0001058623,55,4; 8-K,"8-K filed (+10) | Negative 8-K news: bankruptcy, executive departure (+45)",20261016,10,https://www.sec.gov/Archives/edgar/data/1204334/0001104659-26-116488.txt
 "SANGAMO THERAPEUTICS, INC",SGMOQ,0001001233,50,8-K,8-K filed (+10) | Negative 8-K news: bankruptcy (+40),20261016,1,https://www.sec.gov/Archives/edgar/data/1001233/0001193125-26-423054.txt
 Ferguson Enterprises Inc. /DE/,FERG,0002011641,40,4,6 insiders sold stock (+40),20261016,9,https://www.sec.gov/Archives/edgar/data/2011641/0001984098-26-000003.txt
@@ -11,7 +12,6 @@ ClimateRock,CLRCF,0001903392,35,10-K,Going concern language in filing (+35),2026
 UNION PACIFIC CORP,UNP,0000100885,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/100885/0000100885-26-000305.txt
 Emergent BioSolutions Inc.,EBS,0001367644,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/1367644/0001367644-26-000098.txt
 IRONWOOD PHARMACEUTICALS INC,IRWD,0001446847,30,8-K,8-K filed (+10) | Negative 8-K news: executive departure (+20),20261016,1,https://www.sec.gov/Archives/edgar/data/1446847/0001104659-26-116423.txt
-MYX Inc.,,0002087656,30,NT 10-Q,NT 10-Q filed (+30),20261016,1,https://www.sec.gov/Archives/edgar/data/2087656/0001683168-26-007917.txt
 Hestia Insight Inc.,HSTA,0001813603,30,NT 10-Q,NT 10-Q filed (+30),20261016,1,https://www.sec.gov/Archives/edgar/data/1813603/0001683168-26-007912.txt
 ESPEY MFG & ELECTRONICS CORP,ESP,0000033533,25,8-K,8-K filed (+10) | Negative 8-K news: auditor change (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/33533/0002077096-26-000284.txt
 iPower Inc.,IPW,0001830072,15,S-1,S-1 filed (+15),20261016,1,https://www.sec.gov/Archives/edgar/data/1830072/0001683168-26-007908.txt
